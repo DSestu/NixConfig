@@ -35,6 +35,7 @@
           modules = [
             ./nixos/vm.nix
             ./modules/kde.nix
+            ./modules/konsole.nix
             home-manager.nixosModules.home-manager
             {
               home-manager = {
