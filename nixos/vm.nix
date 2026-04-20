@@ -3,6 +3,10 @@
   pkgs,
   ...
 }: {
+  imports = [
+    ../modules/kde.nix
+  ];
+
   # Placeholder bootloader/fs — overridden by qemu-vm wrapper from build-vm.
   boot.loader.grub = {
     enable = true;
@@ -19,9 +23,12 @@
     isNormalUser = true;
     initialPassword = "nixos";
     extraGroups = ["wheel"];
+    shell = pkgs.fish;
   };
 
   services.openssh.enable = true;
+  # System-wide fish shell
+  programs.fish.enable = true;
 
   virtualisation.vmVariant = {
     virtualisation = {
@@ -39,18 +46,12 @@
     };
   };
 
-  services.xserver = {
-    enable = true;
-    displayManager.gdm.enable = true;
-    desktopManager.gnome.enable = true;
-  };
-
   services.displayManager.autoLogin = {
     enable = true;
     user = "david";
   };
 
-  environment.systemPackages = with pkgs; [vim git];
+  environment.systemPackages = [];
 
   system.stateVersion = "25.11";
 }

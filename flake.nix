@@ -33,6 +33,7 @@
       inherit system;
       modules = [
         ./nixos/vm.nix
+        ./modules/kde.nix
         home-manager.nixosModules.home-manager
         {
           home-manager.users.david = import ./home.nix;
