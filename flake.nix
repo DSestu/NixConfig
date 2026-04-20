@@ -28,21 +28,30 @@
       ];
     };
 
-    nixosConfigurations.vm = nixpkgs.lib.nixosSystem {
-      inherit system;
-      modules = [
-        ./nixos/vm.nix
-        ./modules/kde.nix
-        home-manager.nixosModules.home-manager
-        {
-          home-manager = {
-            useGlobalPkgs = true;
-            useUserPackages = true;
-            backupFileExtension = "bak";
-            users.david = import ./home.nix;
-          };
-        }
-      ];
+    nixosConfigurations = let
+      mkVm = {graphics}:
+        nixpkgs.lib.nixosSystem {
+          inherit system;
+          modules = [
+            ./nixos/vm.nix
+            ./modules/kde.nix
+            home-manager.nixosModules.home-manager
+            {
+              home-manager = {
+                useGlobalPkgs = true;
+                useUserPackages = true;
+                backupFileExtension = "bak";
+                users.david = import ./home.nix;
+              };
+            }
+            {
+              virtualisation.vmVariant.virtualisation.graphics = graphics;
+            }
+          ];
+        };
+    in {
+      vm = mkVm {graphics = true;};
+      vm-headless = mkVm {graphics = false;};
     };
   };
 }

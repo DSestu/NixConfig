@@ -5,6 +5,7 @@
 }: {
   imports = [
     ./modules/fish.nix
+    ./modules/konsole.nix
   ];
 
   home.username = "david";
@@ -13,7 +14,10 @@
 
   home.packages = with pkgs; [
     git
+    nerd-fonts.meslo-lg
   ];
+
+  fonts.fontconfig.enable = true;
 
   home.file = {
   };

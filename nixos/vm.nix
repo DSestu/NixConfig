@@ -34,7 +34,7 @@
     virtualisation = {
       memorySize = 4096;
       cores = 2;
-      graphics = true;
+      # graphics is set per-output in flake.nix (vm vs vm-headless)
       qemu.options = ["-vga virtio" "-display gtk,gl=off"];
       forwardPorts = [
         {
