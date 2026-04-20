@@ -34,7 +34,7 @@ set -g tide_distrobox_color 000000
 set -g tide_distrobox_icon 󰆧
 set -g tide_docker_bg_color 2496ED
 set -g tide_docker_color 000000
-set -g tide_docker_default_contexts "'default'  'colima'"
+set -g tide_docker_default_contexts default colima
 set -g tide_docker_icon 
 set -g tide_elixir_bg_color 4E2A8E
 set -g tide_elixir_color 000000
@@ -55,7 +55,7 @@ set -g tide_git_color_untracked 000000
 set -g tide_git_color_upstream 000000
 set -g tide_git_icon 
 set -g tide_git_truncation_length 24
-set -g tide_git_truncation_strategy ''
+set -g tide_git_truncation_strategy 
 set -g tide_go_bg_color 00ACD7
 set -g tide_go_color 000000
 set -g tide_go_icon 
@@ -70,8 +70,8 @@ set -g tide_kubectl_bg_color 326CE5
 set -g tide_kubectl_color 000000
 set -g tide_kubectl_icon 󱃾
 set -g tide_left_prompt_frame_enabled false
-set -g tide_left_prompt_items "'vi_mode'  'os'  'pwd'  'git'"
-set -g tide_left_prompt_prefix ''
+set -g tide_left_prompt_items vi_mode os pwd git
+set -g tide_left_prompt_prefix
 set -g tide_left_prompt_separator_diff_color 
 set -g tide_left_prompt_separator_same_color 
 set -g tide_left_prompt_suffix 
@@ -93,7 +93,7 @@ set -g tide_private_mode_icon 󰗹
 set -g tide_prompt_add_newline_before true
 set -g tide_prompt_color_frame_and_connection 6C6C6C
 set -g tide_prompt_color_separator_same_color 949494
-set -g tide_prompt_icon_connection "' '"
+set -g tide_prompt_icon_connection ' '
 set -g tide_prompt_min_cols 34
 set -g tide_prompt_pad_items true
 set -g tide_prompt_transient_enabled true
@@ -107,16 +107,16 @@ set -g tide_pwd_color_truncated_dirs BCBCBC
 set -g tide_pwd_icon 
 set -g tide_pwd_icon_home 
 set -g tide_pwd_icon_unwritable 
-set -g tide_pwd_markers "'.bzr'  '.citc'  '.git'  '.hg'  '.node-version'  '.python-ve…"
+set -g tide_pwd_markers .bzr .citc .git .hg .node-version .python-version .ruby-version .shorten_folder_marker .svn .terraform bun.lockb Cargo.toml composer.json CVS go.mod package.json build.zig
 set -g tide_python_bg_color 444444
 set -g tide_python_color 00AFAF
 set -g tide_python_icon 󰌠
 set -g tide_right_prompt_frame_enabled false
-set -g tide_right_prompt_items "'status'  'cmd_duration'  'context'  'jobs'  'direnv'  'bun'…"
+set -g tide_right_prompt_items status cmd_duration context jobs direnv bun node python rustc java php pulumi ruby go gcloud kubectl distrobox toolbox terraform aws nix_shell crystal elixir zig
 set -g tide_right_prompt_prefix 
 set -g tide_right_prompt_separator_diff_color 
 set -g tide_right_prompt_separator_same_color 
-set -g tide_right_prompt_suffix ''
+set -g tide_right_prompt_suffix
 set -g tide_ruby_bg_color B31209
 set -g tide_ruby_color 000000
 set -g tide_ruby_icon 
@@ -138,7 +138,7 @@ set -g tide_terraform_color 000000
 set -g tide_terraform_icon 󱁢
 set -g tide_time_bg_color D3D7CF
 set -g tide_time_color 000000
-set -g tide_time_format ''
+set -g tide_time_format
 set -g tide_toolbox_bg_color 613583
 set -g tide_toolbox_color 000000
 set -g tide_toolbox_icon 

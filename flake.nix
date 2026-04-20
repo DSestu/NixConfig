@@ -21,12 +21,11 @@
     homeConfigurations."david" = home-manager.lib.homeManagerConfiguration {
       inherit pkgs;
 
-      # Specify your home configuration modules here, for example,
-      # the path to your home.nix.
-      modules = [./home.nix];
-
-      # Optionally use extraSpecialArgs
-      # to pass through arguments to home.nix
+      modules = [
+        ./home.nix
+        # On non-NixOS hosts — critical for GUI integration:
+        {targets.genericLinux.enable = true;}
+      ];
     };
 
     nixosConfigurations.vm = nixpkgs.lib.nixosSystem {
@@ -36,7 +35,12 @@
         ./modules/kde.nix
         home-manager.nixosModules.home-manager
         {
-          home-manager.users.david = import ./home.nix;
+          home-manager = {
+            useGlobalPkgs = true;
+            useUserPackages = true;
+            backupFileExtension = "bak";
+            users.david = import ./home.nix;
+          };
         }
       ];
     };
