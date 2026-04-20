@@ -3,6 +3,10 @@
   pkgs,
   ...
 }: {
+  imports = [
+    # ./modules/fish.nix
+  ];
+
   home.username = "david";
   home.homeDirectory = "/home/david";
 
@@ -11,9 +15,9 @@
   # On non-NixOS hosts — critical for GUI integration:
   targets.genericLinux.enable = true;
 
-  programs.fish.enable = true;
-
-  home.packages = [
+  home.packages = with pkgs; [
+    fish
+    neovim
   ];
 
   home.file = {
