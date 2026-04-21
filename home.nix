@@ -5,7 +5,7 @@
 }: {
   imports = [
     ./modules/fish.nix
-    ./modules/konsole.nix
+    ./modules/dev.nix
   ];
 
   home.username = "david";

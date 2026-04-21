@@ -8,11 +8,19 @@
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    plasma-manager = {
+      url = "github:nix-community/plasma-manager";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.home-manager.follows = "home-manager";
+    };
+    impermanence.url = "github:nix-community/impermanence";
   };
 
   outputs = {
     nixpkgs,
     home-manager,
+    plasma-manager,
+    impermanence,
     ...
   }: let
     system = "x86_64-linux";
@@ -35,14 +43,20 @@
           modules = [
             ./nixos/vm.nix
             ./modules/kde.nix
-            ./modules/konsole.nix
+            impermanence.nixosModules.impermanence
             home-manager.nixosModules.home-manager
             {
               home-manager = {
                 useGlobalPkgs = true;
                 useUserPackages = true;
                 backupFileExtension = "bak";
-                users.david = import ./home.nix;
+                sharedModules = [plasma-manager.homeManagerModules.plasma-manager];
+                users.david.imports = [
+                  ./home.nix
+                  ./modules/plasma.nix
+                  ./modules/konsole.nix
+                  ./modules/persistence.nix
+                ];
               };
             }
             {

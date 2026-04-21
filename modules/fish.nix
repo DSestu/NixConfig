@@ -7,6 +7,7 @@
     eza
     yazi
     micro
+    fzf
   ];
 
   xdg.configFile."fish/conf.d/tide-theme.fish".source = ./tide-theme.fish;

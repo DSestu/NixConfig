@@ -17,7 +17,22 @@
     fsType = "ext4";
   };
 
+  # Impermanence: wipe-on-boot $HOME with an explicit whitelist (see modules/persistence.nix).
+  fileSystems."/home/david" = {
+    device = "tmpfs";
+    fsType = "tmpfs";
+    options = ["defaults" "size=2G" "mode=0755" "uid=1000" "gid=100"];
+    neededForBoot = true;
+  };
+
+  systemd.tmpfiles.rules = [
+    "d /nix/persist 0755 root root -"
+  ];
+
   networking.hostName = "nixos-vm";
+
+  services.xserver.xkb.layout = "fr";
+  console.keyMap = "fr";
 
   users.users.david = {
     isNormalUser = true;
@@ -43,8 +58,14 @@
           guest.port = 22;
         }
       ];
+      sharedDirectories.hmconfig = {
+        source = "/home/david/.config/home-manager";
+        target = "/mnt/hmconfig";
+      };
     };
   };
+
+  nix.settings.experimental-features = ["nix-command" "flakes"];
 
   services.displayManager.autoLogin = {
     enable = true;
