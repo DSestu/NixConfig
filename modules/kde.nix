@@ -9,10 +9,12 @@
   services.displayManager.sddm.enable = true;
   services.displayManager.sddm.wayland.enable = true;
 
-  environment.systemPackages = with pkgs.kdePackages; [
-    plasma-systemmonitor
-    libksysguard
-  ];
+  environment.systemPackages =
+    (with pkgs.kdePackages; [
+      plasma-systemmonitor
+      libksysguard
+    ])
+    ++ [pkgs.google-chrome];
 
   # PipeWire for audio (KDE expects it)
   services.pipewire = {

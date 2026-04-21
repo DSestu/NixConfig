@@ -10,6 +10,12 @@ nix run github:nix-community/plasma-manager
 nix flake update nixpkgs
 ```
 
+## Garbage collect
+
+```bash
+nix-collect-garbage -d
+```
+
 ## Launching the VM
 
 Build the VM image:

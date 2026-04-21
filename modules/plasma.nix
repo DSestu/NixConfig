@@ -2,7 +2,10 @@
   config,
   pkgs,
   ...
-}: {
+}:
+let
+  wallpaper = ../wallpapers/wallpaper.jpg;
+in {
   programs.plasma = {
     enable = true;
 
@@ -10,8 +13,11 @@
       lookAndFeel = "org.kde.breezedark.desktop";
       colorScheme = "BreezeDark";
       iconTheme = "breeze-dark";
-      wallpaper = ../wallpapers/wallpaper.jpg;
+      inherit wallpaper;
     };
+
+    # Match SDDM-style lock screen to the desktop (kscreenlockerrc Greeter wallpaper).
+    kscreenlocker.appearance.wallpaper = wallpaper;
 
     shortcuts = {
       "KDE Keyboard Layout Switcher"."Switch to Last-Used Keyboard Layout" = "Meta+Alt+L";

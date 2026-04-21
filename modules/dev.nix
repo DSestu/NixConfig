@@ -8,5 +8,6 @@
     direnv
     vscode
     code-cursor
+    uv
   ];
 }

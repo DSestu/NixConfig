@@ -19,16 +19,10 @@
     fsType = "ext4";
   };
 
-  # Impermanence: wipe-on-boot $HOME with an explicit whitelist (see modules/persistence.nix).
-  fileSystems."/home/david" = {
-    device = "tmpfs";
-    fsType = "tmpfs";
-    options = ["defaults" "size=2G" "mode=0755" "uid=1000" "gid=100"];
-    neededForBoot = true;
-  };
-
   systemd.tmpfiles.rules = [
     "d /nix/persist 0755 root root -"
+    # Full flake lives on the host via VirtFS; link so `--flake /etc/nixos#vm` works.
+    "L+ /etc/nixos - - - - /mnt/hmconfig"
   ];
 
   # Required when using home.persistence (impermanence): keeps assigned
@@ -55,6 +49,15 @@
 
   virtualisation.vmVariant = {
     virtualisation = {
+      # Tmpfs $HOME (impermanence); must live here: qemu-vm sets `fileSystems` from
+      # `virtualisation.fileSystems` only inside the VM variant — plain `fileSystems."/home/david"` was ignored.
+      fileSystems."/home/david" = {
+        device = "tmpfs";
+        fsType = "tmpfs";
+        options = ["defaults" "size=2G" "mode=0755" "uid=1000" "gid=100"];
+        neededForBoot = true;
+      };
+
       memorySize = 8192;
       cores = 8;
       # GTK UI is the reliable default on Linux (SDL often shows no window if QEMU lacks
@@ -75,6 +78,13 @@
       };
     };
   };
+
+  # Flake-based systems omit `nixos-config` from NIX_PATH by default (see
+  # nixpkgs nixpkgs-flake.nix). Point it at the shared checkout so plain
+  # `nixos-rebuild switch` resolves a file; that file only tells you to use --flake.
+  nix.nixPath = [
+    "nixos-config=/mnt/hmconfig/configuration.nix"
+  ];
 
   nix.settings = {
     experimental-features = ["nix-command" "flakes"];
