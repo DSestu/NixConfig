@@ -6,6 +6,7 @@
   imports = [
     ./modules/fish.nix
     ./modules/dev.nix
+    ./modules/pentest.nix
   ];
 
   home.username = "david";
@@ -23,6 +24,12 @@
   };
 
   home.sessionVariables = {
+  };
+
+  # Breeze GTK themes reference kde-gtk-config modules (colorreload, window-decorations).
+  # Without this on GTK_PATH, apps log "Failed to load module …" (common on Nix-on-non-NixOS).
+  home.sessionSearchVariables = {
+    GTK_PATH = ["${pkgs.kdePackages.kde-gtk-config}/lib/gtk-3.0"];
   };
 
   programs.home-manager.enable = true;

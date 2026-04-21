@@ -3,6 +3,8 @@
   pkgs,
   ...
 }: {
+  nixpkgs.config.allowUnfree = true;
+
   imports = [
     ../modules/kde.nix
   ];
@@ -28,6 +30,12 @@
   systemd.tmpfiles.rules = [
     "d /nix/persist 0755 root root -"
   ];
+
+  # Required when using home.persistence (impermanence): keeps assigned
+  # uids/gids stable across reboots instead of re-randomizing from /etc/passwd.
+  environment.persistence."/nix/persist" = {
+    directories = ["/var/lib/nixos"];
+  };
 
   networking.hostName = "nixos-vm";
 
