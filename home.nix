@@ -27,4 +27,12 @@
 
   programs.home-manager.enable = true;
   programs.fish.enable = true;
+
+  # User-level store cleanup (current user's profiles only). Complements
+  # system nix.gc on NixOS; on standalone Nix + HM this is the main scheduled GC.
+  nix.gc = {
+    automatic = true;
+    dates = "weekly";
+    options = "--delete-older-than 7d";
+  };
 }

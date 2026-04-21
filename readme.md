@@ -4,6 +4,12 @@
 nix run github:nix-community/plasma-manager
 ```
 
+## Update packages
+
+```bash
+nix flake update nixpkgs
+```
+
 ## Launching the VM
 
 Build the VM image:
@@ -19,6 +25,8 @@ Run the VM:
 ```
 
 ### Graphical (QEMU window + GNOME/KDE)
+
+Grab all keyboard shortcuts: `ctrl + alt + g`
 
 ```bash
 nix build '.#nixosConfigurations.vm.config.system.build.vm' && ./result/bin/run-nixos-vm-vm -snapshot

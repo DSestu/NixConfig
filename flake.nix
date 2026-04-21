@@ -50,10 +50,11 @@
                 useGlobalPkgs = true;
                 useUserPackages = true;
                 backupFileExtension = "bak";
-                sharedModules = [plasma-manager.homeManagerModules.plasma-manager];
+                sharedModules = [plasma-manager.homeModules.plasma-manager];
                 users.david.imports = [
                   ./home.nix
                   ./modules/plasma.nix
+                  ./modules/plasma-appletsrc.nix
                   ./modules/konsole.nix
                   ./modules/persistence.nix
                 ];
