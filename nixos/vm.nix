@@ -55,9 +55,12 @@
 
   virtualisation.vmVariant = {
     virtualisation = {
-      memorySize = 4096;
-      cores = 2;
-      # graphics is set per-output in flake.nix (vm vs vm-headless)
+      memorySize = 8192;
+      cores = 8;
+      # GTK UI is the reliable default on Linux (SDL often shows no window if QEMU lacks
+      # SDL2 or the display stack disagrees). Host-side Gtk-Message lines about
+      # colorreload/window-decorations are harmless; silence with:
+      #   env GTK_MODULES= run-nixos-vm
       qemu.options = ["-vga virtio" "-display gtk,gl=off"];
       forwardPorts = [
         {
