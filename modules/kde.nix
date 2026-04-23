@@ -1,7 +1,7 @@
 {pkgs, ...}: {
   # Ensure GTK can load kde-gtk-config modules used by Breeze (see gtk-modules in theme settings.ini).
   environment.sessionVariables = {
-    GTK_PATH = [ "${pkgs.kdePackages.kde-gtk-config}/lib/gtk-3.0" ];
+    GTK_PATH = ["${pkgs.kdePackages.kde-gtk-config}/lib/gtk-3.0"];
   };
 
   services.xserver.enable = true;
@@ -14,7 +14,9 @@
       plasma-systemmonitor
       libksysguard
     ])
-    ++ [pkgs.google-chrome];
+    ++ [
+      pkgs.google-chrome
+    ];
 
   # PipeWire for audio (KDE expects it)
   services.pipewire = {

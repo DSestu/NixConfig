@@ -8,6 +8,7 @@
     yazi
     micro
     fzf
+    nerd-fonts.meslo-lg
   ];
 
   xdg.configFile."fish/conf.d/tide-theme.fish".source = ./tide-theme.fish;
