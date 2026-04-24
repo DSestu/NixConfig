@@ -1,4 +1,6 @@
 {
+  config,
+  lib,
   pkgs,
   ...
 }: {
@@ -11,8 +13,10 @@
 
   # Required when using home.persistence (impermanence): keeps assigned
   # uids/gids stable across reboots instead of re-randomizing from /etc/passwd.
-  environment.persistence."/nix/persist" = {
-    directories = ["/var/lib/nixos"];
+  environment.persistence = lib.mkIf config.profiles.impermanence.enable {
+    "/nix/persist" = {
+      directories = ["/var/lib/nixos"];
+    };
   };
 
   services.xserver.xkb.layout = "fr";

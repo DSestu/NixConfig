@@ -14,6 +14,7 @@
       inputs.home-manager.follows = "home-manager";
     };
     impermanence.url = "github:nix-community/impermanence";
+    nixos-wsl.url = "github:nix-community/NixOS-WSL/main";
   };
 
   outputs = {
@@ -21,6 +22,7 @@
     home-manager,
     plasma-manager,
     impermanence,
+    nixos-wsl,
     ...
   }: let
     system = "x86_64-linux";
@@ -43,12 +45,12 @@
     nixosConfigurations = let
       # Baseline applied to every profile.
       commonNixosModules = [
+        ./nixos/modules/profile-options.nix
         ./nixos/base.nix
         impermanence.nixosModules.impermanence
         home-manager.nixosModules.home-manager
       ];
       commonHomeImports = [
-        ./modules/persistence.nix
         ./home.nix
       ];
 
@@ -66,6 +68,7 @@
           // {
             hostname = "nixos-vm";
             hypervisor = "qemu";
+            impermanence = true;
             extraHomeImports = [./modules/gaming.nix];
           };
 
@@ -75,12 +78,14 @@
             hostname = "nixos-desktop";
             hypervisor = "none";
             extraHomeImports = [./modules/gaming.nix];
+            impermanence = true;
           };
 
         nixos-vm-headless = {
           hostname = "nixos-vm-headless";
           hypervisor = "qemu";
           graphics = false;
+          impermanence = true;
         };
 
         nixos-vbox =
@@ -88,7 +93,20 @@
           // {
             hostname = "nixos-vbox";
             hypervisor = "virtualbox";
+            impermanence = true;
           };
+
+        nixos-wsl = {
+          hostname = "nixos-wsl";
+          hypervisor = "wsl";
+          # Keep disabled by default to avoid accidental ephemeral behavior.
+          # This also guarantees no interaction with the Windows host FS.
+          impermanence = false;
+          extraHomeImports = [
+            ./modules/wsl-home.nix
+            ./nixos/hosts/nixos-wsl/fish.nix
+          ];
+        };
       };
 
       mkProfile = name: profile: let
@@ -97,6 +115,7 @@
             graphics = true;
             extraNixosModules = [];
             extraHomeImports = [];
+            impermanence = false;
           }
           // profile;
 
@@ -109,11 +128,16 @@
 
         profileWiring = {
           networking.hostName = cfg.hostname;
+          profiles.impermanence.enable = cfg.impermanence;
           home-manager = {
             useGlobalPkgs = true;
             useUserPackages = true;
             backupFileExtension = "bak";
-            users.david.imports = commonHomeImports ++ cfg.extraHomeImports;
+            users.david.imports =
+              commonHomeImports
+              ++ (lib.optional cfg.impermanence impermanence.homeManagerModules.impermanence)
+              ++ (lib.optional cfg.impermanence ./modules/persistence.nix)
+              ++ cfg.extraHomeImports;
           };
         };
 
@@ -129,12 +153,23 @@
           then [
             ./nixos/platforms/vm-virtualbox.nix
           ]
+          else if cfg.hypervisor == "wsl"
+          then [
+            nixos-wsl.nixosModules.default
+            ./nixos/platforms/wsl.nix
+          ]
           else [];
+
       in
         nixpkgs.lib.nixosSystem {
           inherit system;
           specialArgs = {inherit plasma-manager;};
-          modules = commonNixosModules ++ hostModules ++ cfg.extraNixosModules ++ [profileWiring] ++ hypervisorModules;
+          modules =
+            commonNixosModules
+            ++ hostModules
+            ++ cfg.extraNixosModules
+            ++ [profileWiring]
+            ++ hypervisorModules;
         };
     in
       lib.mapAttrs mkProfile profiles;
