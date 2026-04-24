@@ -20,6 +20,20 @@ nix-collect-garbage -d
 nix run github:nix-community/plasma-manager
 ```
 
+### Refresh AppImage hash
+
+Compute latest SRI hash:
+
+```bash
+./scripts/update-appimage-hash.sh "https://example.com/MyApp-x86_64.AppImage"
+```
+
+Compute and replace an existing hash in a file:
+
+```bash
+./scripts/update-appimage-hash.sh "https://example.com/MyApp-x86_64.AppImage" --replace modules/gaming.nix "sha256-OLD_HASH"
+```
+
 ## VM workflows
 
 VM targets reuse the same base machine configuration as real-machine targets; only hypervisor-specific modules differ.

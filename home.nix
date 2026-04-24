@@ -4,11 +4,13 @@
   ...
 }: {
   imports = [
+    ./modules/common.nix
     ./modules/fish.nix
     ./modules/dev.nix
     ./modules/deployment.nix
     ./modules/network.nix
     ./modules/pentest.nix
+    ./modules/gaming.nix
   ];
 
   home.username = "david";

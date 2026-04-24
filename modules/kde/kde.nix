@@ -13,10 +13,6 @@
     (with pkgs.kdePackages; [
       plasma-systemmonitor
       libksysguard
-    ])
-    ++ (with pkgs; [
-      google-chrome
-      brave
     ]);
 
   # PipeWire for audio (KDE expects it)

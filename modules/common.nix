@@ -4,17 +4,17 @@
   pkgs,
   ...
 }: let
-  gamingPackages = with pkgs; [
-    steam
-    gdlauncher-carbon
+  commonPackages = with pkgs; [
+    google-chrome
+    brave
   ];
 in {
   config = lib.mkMerge [
     (lib.optionalAttrs (options ? home) {
-      home.packages = gamingPackages;
+      home.packages = commonPackages;
     })
     (lib.optionalAttrs (options ? environment && options.environment ? systemPackages) {
-      environment.systemPackages = gamingPackages;
+      environment.systemPackages = commonPackages;
     })
   ];
 }

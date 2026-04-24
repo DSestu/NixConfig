@@ -98,6 +98,32 @@
           echo "WARN github auth: gh CLI not installed"
         end
 
+        # Private repo + remote deployment readiness
+        if type -q nixos-anywhere
+          echo "PASS deployment tool: nixos-anywhere installed"
+        else
+          echo "WARN deployment tool: nixos-anywhere missing"
+        end
+
+        if type -q git
+          set origin_url (git config --get remote.origin.url 2>/dev/null)
+          if test -n "$origin_url"
+            if string match -qr 'github\\.com[:/]' -- "$origin_url"
+              if string match -qr '^git@github\\.com:' -- "$origin_url"
+                echo "PASS private repo access: origin uses SSH ($origin_url)"
+              else if string match -qr '^https://github\\.com/' -- "$origin_url"
+                echo "WARN private repo access: origin uses HTTPS ($origin_url) - ensure 'gh auth login' works on this machine"
+              else
+                echo "WARN private repo access: unrecognized GitHub remote format ($origin_url)"
+              end
+            else
+              echo "WARN private repo access: origin is not GitHub ($origin_url)"
+            end
+          else
+            echo "WARN private repo access: no git origin remote configured"
+          end
+        end
+
         # SSH key + agent (SSH workflow)
         echo "Checking for SSH key: running 'test -f \$HOME/.ssh/id_ed25519 -o -f \$HOME/.ssh/id_rsa'"
         if test -f "$HOME/.ssh/id_ed25519" -o -f "$HOME/.ssh/id_rsa"
