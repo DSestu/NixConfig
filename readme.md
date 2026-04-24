@@ -1,16 +1,60 @@
-## Export all plasma settings with
+# Home Manager + NixOS Flake
 
-```bash
-nix run github:nix-community/plasma-manager
-```
+## Daily commands
 
-## Update packages
+### Update packages
 
 ```bash
 nix flake update nixpkgs
 ```
 
-## Update a remote machine from local
+### Garbage collect
+
+```bash
+nix-collect-garbage -d
+```
+
+### Export plasma settings
+
+```bash
+nix run github:nix-community/plasma-manager
+```
+
+## VM workflows
+
+VM targets reuse the same base machine configuration as real-machine targets; only hypervisor-specific modules differ.
+
+### QEMU GUI
+
+Grab keyboard with `ctrl + alt + g`.
+
+```bash
+./scripts/run-vm-gui.sh
+```
+
+### QEMU headless
+
+```bash
+./scripts/run-vm-headless.sh
+```
+
+### VirtualBox image (OVA)
+
+```bash
+./scripts/build-vbox-ova.sh
+```
+
+Import the generated `*.ova` from `./result/` into VirtualBox, then start it from the VirtualBox UI.
+
+### Rebuild inside VM
+
+```bash
+nixos-rebuild switch
+```
+
+## Remote deployment
+
+### Local -> remote update (`nixos-rebuild`)
 
 Run from this repo on your local machine:
 
@@ -24,19 +68,17 @@ Example:
 sudo nixos-rebuild switch --flake .#nixos-vm --target-host david@192.168.1.50 --use-remote-sudo
 ```
 
-Optional dry-run style build first:
+Optional pre-check build:
 
 ```bash
 sudo nixos-rebuild build --flake .#<profile-name> --target-host <user>@<remote-host> --use-remote-sudo
 ```
 
-## Remote install/push over SSH with nixos-anywhere
+### Remote install/reprovision (`nixos-anywhere`)
 
-`nixos-anywhere` is best for first install or full reprovision over SSH.
+Use this for first install or full reprovision over SSH.
 
-WARNING: this is destructive by default (it can repartition/reinstall the target machine).
-
-From this repo on your local machine:
+WARNING: destructive by default (can repartition/reinstall the target).
 
 ```bash
 nixos-anywhere --flake .#<profile-name> <user>@<remote-host>
@@ -48,90 +90,48 @@ Example:
 nixos-anywhere --flake .#nixos-vm root@192.168.1.50
 ```
 
-If `nixos-anywhere` is not on PATH yet, run via nix:
+Fallback via `nix run`:
 
 ```bash
 nix run github:nix-community/nixos-anywhere -- --flake .#<profile-name> <user>@<remote-host>
 ```
 
-## Garbage collect
+## Performance notes
 
-```bash
-nix-collect-garbage -d
-```
+### KVM acceleration
 
-## Launching the VM
+Without KVM, VM performance is typically 10-20x slower.
 
-VM targets now reuse the same base machine config as real-machine targets. Only hypervisor-specific bits differ.
-
-### Graphical (QEMU window + KDE)
-
-Grab all keyboard shortcuts: `ctrl + alt + g`
-
-```bash
-./scripts/run-vm-gui.sh
-```
-
-### Headless (serial console, output in your terminal)
-
-```bash
-./scripts/run-vm-headless.sh
-```
-
-### VirtualBox (build OVA image)
-
-```bash
-./scripts/build-vbox-ova.sh
-```
-
-Import the generated `*.ova` from `./result/` into VirtualBox, then start it from the VirtualBox UI.
-
-### Rebuilding inside the VM
-
-```bash
-nixos-rebuild switch
-```
-
-The flake attribute is auto-detected from the hostname, so no `--flake` flag is needed.
-
-## Virtualisation performance issues
-
-### KVM Acceleration
-
-To ensure optimal VM performance, verify that KVM acceleration is enabled. Without KVM, the VM will run 10-20× slower regardless of the number of cores assigned.
-
-Check if you are in the `kvm` group:
+Check membership:
 
 ```bash
 groups | grep -q kvm && echo "KVM enabled" || echo "You need to join the kvm group"
 ```
 
-If you are not a member, add yourself to the `kvm` group and re-login:
+If needed:
 
 ```bash
 sudo usermod -aG kvm david
 ```
 
-Then log out and log back in for the changes to take effect.
+Then log out and back in.
 
 ## Adding a new module
 
-This repo supports three common module patterns:
+This repo supports:
 
-- Home Manager only module (user-level config/packages)
-- NixOS only module (system services/kernel/networking)
-- Shared module imported by both, with option guards
+- Home Manager-only modules (user config/packages)
+- NixOS-only modules (system services/kernel/networking)
+- Shared modules imported by both (with option guards)
 
-### 1) Create the module file
-
-Example:
+### 1) Create module file
 
 ```bash
 mkdir -p modules
 micro modules/example.nix
 ```
 
-Minimal Home Manager module template:
+Minimal Home Manager module:
 
 ```nix
 {
@@ -144,42 +144,22 @@ Minimal Home Manager module template:
 }
 ```
 
-### 2) Wire it where it belongs
+### 2) Wire module
 
-Home Manager (always loaded for user `david`):
+- Home Manager: add `./modules/example.nix` to `imports` in `home.nix`.
+- NixOS: add `./modules/example.nix` in `flake.nix` (`mkProfile`) or gate by profile flags.
 
-- Add `./modules/example.nix` to `imports` in `home.nix`.
+### 3) Make module profile-aware (optional)
 
-NixOS (loaded per profile/host):
+In `flake.nix` profile dictionary:
 
-- Add `./modules/example.nix` to the `modules` list in `flake.nix` inside `mkProfile` (global), or gate it with a profile flag (recommended).
+1. Add toggle in `profileDefaults.modules` (example: `example = false;`).
+2. Override per profile (`profiles.<name>.modules.example = true/false;`).
+3. Gate import with `lib.optionals cfg.modules.example [ ./modules/example.nix ]`.
 
-### 3) If you want per-profile enable/disable
-
-Use the profile dictionary in `flake.nix`:
-
-1. Add a new toggle in `profileDefaults.modules`, for example `example = false;`
-2. Set it per profile under `profiles.<name>.modules.example = true/false;`
-3. Gate import/config with `lib.optionals cfg.modules.example [ ./modules/example.nix ]`
-
-This keeps module selection declarative and centralized.
-
-### 4) Build/test
-
-Home Manager check:
+### 4) Validate
 
 ```bash
 home-manager switch --flake .#david
-```
-
-NixOS profile check:
-
-```bash
 sudo nixos-rebuild switch --flake .#nixos-vm
-```
-
-Or for headless:
-
-```bash
-sudo nixos-rebuild switch --flake .#nixos-vm-headless
 ```
