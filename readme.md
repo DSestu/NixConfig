@@ -136,7 +136,11 @@ This repo supports:
 
 - Home Manager-only modules (user config/packages)
 - NixOS-only modules (system services/kernel/networking)
-- Shared modules imported by both (with option guards)
+- Shared modules imported by both (with option guards, see `modules/common.nix`)
+
+The mental model is minimal: every profile gets a fixed baseline, and each
+profile can append its own extras via two lists — `extraNixosModules` and
+`extraHomeImports`. There are no flags or toggles.
 
 ### 1) Create module file
 
@@ -160,18 +164,34 @@ Minimal Home Manager module:
 
 ### 2) Wire module
 
-- Home Manager: add `./modules/example.nix` to `imports` in `home.nix`.
-- NixOS: add `./modules/example.nix` in `flake.nix` (`mkProfile`) or gate by profile flags.
+Decide where it should live:
 
-### 3) Make module profile-aware (optional)
+- Everywhere (baseline for all profiles):
+  - Home Manager: add `./modules/example.nix` to `imports` in `home.nix`.
+  - NixOS: add `./modules/example.nix` to `commonNixosModules` in `flake.nix`.
+- On every desktop profile (QEMU/VirtualBox/bare-metal desktop):
+  - NixOS-style: append to `sharedDesktopProfile.extraNixosModules`.
+  - (Home Manager-style: `sharedDesktopProfile` does not hold HM extras by
+    default — either add one there or add it per profile below.)
+- On a single profile only:
+  - Home Manager-style: set `extraHomeImports = [...]` on `profiles.<name>`.
+  - NixOS-style: set `extraNixosModules = [...]` on `profiles.<name>` (this
+    replaces the list inherited from `sharedDesktopProfile`; concatenate
+    `sharedDesktopProfile.extraNixosModules ++ [...]` if you want to keep
+    the desktop defaults).
 
-In `flake.nix` profile dictionary:
+Example — add `./modules/example.nix` only to `nixos-desktop` as a Home
+Manager import:
 
-1. Add toggle in `profileDefaults.modules` (example: `example = false;`).
-2. Override per profile (`profiles.<name>.modules.example = true/false;`).
-3. Gate import with `lib.optionals cfg.modules.example [ ./modules/example.nix ]`.
+```nix
+nixos-desktop = sharedDesktopProfile // {
+  hostname = "nixos-desktop";
+  hypervisor = "none";
+  extraHomeImports = [./modules/example.nix];
+};
+```
 
-### 4) Validate
+### 3) Validate
 
 ```bash
 home-manager switch --flake .#david

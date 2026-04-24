@@ -41,82 +41,74 @@
     };
 
     nixosConfigurations = let
-      # Shared desktop VM profile used by both QEMU and VirtualBox targets.
-      sharedDesktopVm = {
+      # Baseline applied to every profile.
+      commonNixosModules = [
+        ./nixos/base.nix
+        impermanence.nixosModules.impermanence
+        home-manager.nixosModules.home-manager
+      ];
+      commonHomeImports = [
+        ./modules/persistence.nix
+        ./home.nix
+      ];
+
+      # Shared desktop profile used by every graphical target.
+      # Opt-in extras (like gaming) are added per-profile below.
+      sharedDesktopProfile = {
         graphics = true;
-        modules = {
-          kdeSuite = true;
-          gaming = true;
-        };
+        extraNixosModules = [./modules/kde-suite.nix];
       };
 
-      # Profile dictionary: toggle modules/features here per target.
+      # Profile dictionary: add/remove modules per target here.
       profiles = {
         nixos-vm =
-          sharedDesktopVm
+          sharedDesktopProfile
           // {
             hostname = "nixos-vm";
             hypervisor = "qemu";
+            extraHomeImports = [./modules/gaming.nix];
           };
 
         nixos-desktop =
-          sharedDesktopVm
+          sharedDesktopProfile
           // {
             hostname = "nixos-desktop";
             hypervisor = "none";
+            extraHomeImports = [./modules/gaming.nix];
           };
 
         nixos-vm-headless = {
           hostname = "nixos-vm-headless";
           hypervisor = "qemu";
           graphics = false;
-          modules = {
-            kdeSuite = false;
-            gaming = false;
-          };
         };
 
         nixos-vbox =
-          sharedDesktopVm
+          sharedDesktopProfile
           // {
             hostname = "nixos-vbox";
             hypervisor = "virtualbox";
           };
       };
 
-      profileDefaults = {
-        hostname = "nixos-vm";
-        hypervisor = "qemu";
-        graphics = true;
-        modules = {
-          kdeSuite = true;
-          gaming = false;
-        };
-      };
-
-      mkProfile = name: profile: let
-        cfg = lib.recursiveUpdate profileDefaults profile;
-        commonModules = [
-          ./nixos/base.nix
-          # Always enabled on every profile.
-          impermanence.nixosModules.impermanence
-          home-manager.nixosModules.home-manager
+      mkProfile = _: profile: let
+        cfg =
           {
-            networking.hostName = cfg.hostname;
-            home-manager = {
-              useGlobalPkgs = true;
-              useUserPackages = true;
-              backupFileExtension = "bak";
-              users.david.imports = [
-                ./modules/persistence.nix
-                ./home.nix
-              ] ++ lib.optionals cfg.modules.gaming [
-                ./modules/gaming.nix
-              ];
-            };
+            graphics = true;
+            extraNixosModules = [];
+            extraHomeImports = [];
           }
-          ./modules/kde-suite.nix
-        ];
+          // profile;
+
+        hostModule = {
+          networking.hostName = cfg.hostname;
+          home-manager = {
+            useGlobalPkgs = true;
+            useUserPackages = true;
+            backupFileExtension = "bak";
+            users.david.imports = commonHomeImports ++ cfg.extraHomeImports;
+          };
+        };
 
         hypervisorModules =
           if cfg.hypervisor == "qemu"
@@ -134,12 +126,8 @@
       in
         nixpkgs.lib.nixosSystem {
           inherit system;
-          specialArgs = {
-            profileName = name;
-            profileConfig = cfg;
-            inherit plasma-manager;
-          };
-          modules = commonModules ++ hypervisorModules;
+          specialArgs = {inherit plasma-manager;};
+          modules = commonNixosModules ++ cfg.extraNixosModules ++ [hostModule] ++ hypervisorModules;
         };
     in
       lib.mapAttrs mkProfile profiles;
