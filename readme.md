@@ -18,31 +18,27 @@ nix-collect-garbage -d
 
 ## Launching the VM
 
-Build the VM image:
-
-```bash
-nix build '.#nixosConfigurations.vm.config.system.build.vm'
-```
-
-Run the VM:
-
-```bash
-./result/bin/run-nixos-vm
-```
-
-### Graphical (QEMU window + GNOME/KDE)
+### Graphical (QEMU window + KDE)
 
 Grab all keyboard shortcuts: `ctrl + alt + g`
 
 ```bash
-nix build '.#nixosConfigurations.vm.config.system.build.vm' && ./result/bin/run-nixos-vm-vm -snapshot
+nix build '.#nixosConfigurations.nixos-vm.config.system.build.vm' && ./result/bin/run-nixos-vm -snapshot
 ```
 
 ### Headless (serial console, output in your terminal)
 
 ```bash
-nix build '.#nixosConfigurations.vm-headless.config.system.build.vm' && ./result/bin/run-nixos-vm-vm -snapshot
+nix build '.#nixosConfigurations.nixos-vm-headless.config.system.build.vm' && ./result/bin/run-nixos-vm-headless-vm -snapshot
 ```
+
+### Rebuilding inside the VM
+
+```bash
+nixos-rebuild switch
+```
+
+The flake attribute is auto-detected from the hostname, so no `--flake` flag is needed.
 
 ## Virtualisation performance issues
 

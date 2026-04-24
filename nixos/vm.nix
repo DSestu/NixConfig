@@ -1,6 +1,7 @@
 {
   config,
   pkgs,
+  lib,
   ...
 }: {
   nixpkgs.config.allowUnfree = true;
@@ -25,15 +26,29 @@
     "L+ /etc/nixos - - - - /mnt/hmconfig"
   ];
 
+  # Wipe root on every boot, keeping only /nix (store + persist), /boot (GRUB),
+  # and /mnt (CRITICAL: 9p shared directories from the host are mounted under
+  # /mnt by the time this runs — `rm -rf` would cross the mount and destroy
+  # files on the host filesystem).
+  boot.initrd.systemd.storePaths = [pkgs.findutils pkgs.coreutils];
+  boot.initrd.systemd.services.wipe-root = {
+    requiredBy = ["initrd-root-fs.target"];
+    after = ["sysroot.mount"];
+    before = ["initrd-root-fs.target"];
+    unitConfig.DefaultDependencies = "no";
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "${pkgs.findutils}/bin/find /sysroot -xdev -maxdepth 1 -mindepth 1 ! -name nix ! -name boot ! -name mnt -exec ${pkgs.coreutils}/bin/rm -rf {} +";
+    };
+  };
+
   # Required when using home.persistence (impermanence): keeps assigned
   # uids/gids stable across reboots instead of re-randomizing from /etc/passwd.
   environment.persistence."/nix/persist" = {
     directories = ["/var/lib/nixos"];
   };
 
-  networking.hostName = "nixos-vm";
-
-  services.xserver.xkb.layout = "fr";
+services.xserver.xkb.layout = "fr";
   console.keyMap = "fr";
 
   users.users.david = {
@@ -49,15 +64,6 @@
 
   virtualisation.vmVariant = {
     virtualisation = {
-      # Tmpfs $HOME (impermanence); must live here: qemu-vm sets `fileSystems` from
-      # `virtualisation.fileSystems` only inside the VM variant — plain `fileSystems."/home/david"` was ignored.
-      fileSystems."/home/david" = {
-        device = "tmpfs";
-        fsType = "tmpfs";
-        options = ["defaults" "size=2G" "mode=0755" "uid=1000" "gid=100"];
-        neededForBoot = true;
-      };
-
       memorySize = 8192;
       cores = 8;
       # GTK UI is the reliable default on Linux (SDL often shows no window if QEMU lacks

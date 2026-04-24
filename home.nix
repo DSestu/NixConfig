@@ -15,8 +15,6 @@
   home.stateVersion = "25.11";
 
   home.packages = with pkgs; [
-    git
-    nerd-fonts.meslo-lg
   ];
 
   fonts.fontconfig.enable = true;

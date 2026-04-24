@@ -24,6 +24,7 @@
     ...
   }: let
     system = "x86_64-linux";
+    lib = nixpkgs.lib;
     pkgs = import nixpkgs {
       inherit system;
       config.allowUnfree = true;
@@ -40,37 +41,48 @@
     };
 
     nixosConfigurations = let
-      mkVm = {graphics}:
+      mkVm = {
+        graphics,
+        kde ? graphics,
+        hostname ? "nixos-vm",
+      }:
         nixpkgs.lib.nixosSystem {
           inherit system;
-          modules = [
-            ./nixos/vm.nix
-            ./modules/kde.nix
-            impermanence.nixosModules.impermanence
-            home-manager.nixosModules.home-manager
-            {
-              home-manager = {
-                useGlobalPkgs = true;
-                useUserPackages = true;
-                backupFileExtension = "bak";
-                sharedModules = [plasma-manager.homeModules.plasma-manager];
-                users.david.imports = [
-                  ./home.nix
-                  ./modules/plasma.nix
-                  ./modules/plasma-appletsrc.nix
-                  ./modules/konsole.nix
-                  ./modules/persistence.nix
-                ];
-              };
-            }
-            {
-              virtualisation.vmVariant.virtualisation.graphics = graphics;
-            }
-          ];
+          modules =
+            [
+              ./nixos/vm.nix
+              impermanence.nixosModules.impermanence
+              home-manager.nixosModules.home-manager
+              {
+                networking.hostName = hostname;
+                home-manager = {
+                  useGlobalPkgs = true;
+                  useUserPackages = true;
+                  backupFileExtension = "bak";
+                  sharedModules = lib.optionals kde [plasma-manager.homeModules.plasma-manager];
+                  users.david.imports =
+                    [
+                      ./modules/persistence.nix
+                      ./home.nix
+                    ]
+                    ++ lib.optionals kde [
+                      ./modules/plasma.nix
+                      ./modules/plasma-appletsrc.nix
+                      ./modules/konsole.nix
+                    ];
+                };
+              }
+              {
+                virtualisation.vmVariant.virtualisation.graphics = graphics;
+              }
+            ]
+            ++ lib.optionals kde [
+              ./modules/kde.nix
+            ];
         };
     in {
-      vm = mkVm {graphics = true;};
-      vm-headless = mkVm {graphics = false;};
+      nixos-vm = mkVm {graphics = true;};
+      nixos-vm-headless = mkVm {graphics = false; hostname = "nixos-vm-headless";};
     };
   };
 }

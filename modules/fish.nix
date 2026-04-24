@@ -29,15 +29,6 @@
         name = "z";
         src = pkgs.fishPlugins.z.src;
       }
-      # {
-      #   name = "fish-abbreviation-tips";
-      #   src = pkgs.fetchFromGitHub {
-      #     owner = "gazorby";
-      #     repo = "fish-abbreviation-tips";
-      #     rev = "8ef581f61f5d2cac936d6ee2e2f09cfcb48d3755";
-      #     hash = "";
-      #   };
-      # }
     ];
 
     shellAliases = {
@@ -46,6 +37,7 @@
       ll = "l -la";
       lt = "ll -T";
       pc = "git diff --name-only --diff-filter ACMR origin/master...HEAD | xargs pre-commit run --files";
+      checks = "post_install_checks";
     };
 
     functions = {
@@ -81,6 +73,43 @@
           builtin cd -- "$cwd"
         end
         rm -f -- "$tmp"
+      '';
+
+      post_install_checks = ''
+        echo "== Post-install checks =="
+
+        # Git identity
+        set git_name (git config --global --get user.name 2>/dev/null)
+        set git_email (git config --global --get user.email 2>/dev/null)
+        if test -n "$git_name"; and test -n "$git_email"
+          echo "PASS git identity: $git_name <$git_email>"
+        else
+          echo "FAIL git identity missing (set programs.git.userName/userEmail)"
+        end
+
+        # GitHub auth (HTTPS workflow)
+        if type -q gh
+          if gh auth status -h github.com >/dev/null 2>&1
+            echo "PASS github auth: gh is logged in"
+          else
+            echo "WARN github auth: run 'gh auth login'"
+          end
+        else
+          echo "WARN github auth: gh CLI not installed"
+        end
+
+        # SSH key + agent (SSH workflow)
+        if test -f "$HOME/.ssh/id_ed25519" -o -f "$HOME/.ssh/id_rsa"
+          echo "PASS ssh key: key file exists"
+        else
+          echo "WARN ssh key: generate one with 'ssh-keygen -t ed25519 -C \"your_email\"'"
+        end
+
+        if ssh-add -l >/dev/null 2>&1
+          echo "PASS ssh-agent: at least one key loaded"
+        else
+          echo "WARN ssh-agent: no loaded keys (try 'ssh-add ~/.ssh/id_ed25519')"
+        end
       '';
     };
 
