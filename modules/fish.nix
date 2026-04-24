@@ -99,16 +99,46 @@
         end
 
         # SSH key + agent (SSH workflow)
+        echo "Checking for SSH key: running 'test -f \$HOME/.ssh/id_ed25519 -o -f \$HOME/.ssh/id_rsa'"
         if test -f "$HOME/.ssh/id_ed25519" -o -f "$HOME/.ssh/id_rsa"
           echo "PASS ssh key: key file exists"
         else
           echo "WARN ssh key: generate one with 'ssh-keygen -t ed25519 -C \"your_email\"'"
         end
 
+
         if ssh-add -l >/dev/null 2>&1
           echo "PASS ssh-agent: at least one key loaded"
         else
           echo "WARN ssh-agent: no loaded keys (try 'ssh-add ~/.ssh/id_ed25519')"
+        end
+
+        # Tailscale
+        if type -q tailscale
+          if systemctl is-enabled --quiet tailscaled 2>/dev/null
+            echo "PASS tailscale service: enabled"
+          else
+            echo "WARN tailscale service: not enabled"
+          end
+
+          if systemctl is-active --quiet tailscaled 2>/dev/null
+            echo "PASS tailscale daemon: running"
+          else
+            echo "WARN tailscale daemon: not running"
+          end
+
+          set login_name (tailscale status --json 2>/dev/null | string match -r '"LoginName":"[^"]+"' | head -n1 | string replace -r '^"LoginName":"([^"]+)"$' '$1')
+          if test -n "$login_name"
+            if test "$login_name" = "david.sestu@gmail.com"
+              echo "PASS tailscale auth: logged in as $login_name"
+            else
+              echo "WARN tailscale auth: logged in as $login_name (expected david.sestu@gmail.com)"
+            end
+          else
+            echo "WARN tailscale auth: not logged in (run 'sudo tailscale up')"
+          end
+        else
+          echo "WARN tailscale: CLI not installed"
         end
       '';
     };

@@ -7,7 +7,7 @@
   nixpkgs.config.allowUnfree = true;
 
   imports = [
-    ../modules/kde.nix
+    ../modules/network.nix
   ];
 
   # Placeholder bootloader/fs — overridden by qemu-vm wrapper from build-vm.
@@ -30,7 +30,7 @@
   # and /mnt (CRITICAL: 9p shared directories from the host are mounted under
   # /mnt by the time this runs — `rm -rf` would cross the mount and destroy
   # files on the host filesystem).
-  boot.initrd.systemd.storePaths = [pkgs.findutils pkgs.coreutils];
+  boot.initrd.systemd.storePaths = [pkgs.findutils pkgs.coreutils pkgs.util-linux pkgs.bash];
   boot.initrd.systemd.services.wipe-root = {
     requiredBy = ["initrd-root-fs.target"];
     after = ["sysroot.mount"];
@@ -38,7 +38,7 @@
     unitConfig.DefaultDependencies = "no";
     serviceConfig = {
       Type = "oneshot";
-      ExecStart = "${pkgs.findutils}/bin/find /sysroot -xdev -maxdepth 1 -mindepth 1 ! -name nix ! -name boot ! -name mnt -exec ${pkgs.coreutils}/bin/rm -rf {} +";
+      ExecStart = "${pkgs.bash}/bin/bash -euo pipefail -c 'for path in /sysroot/*; do [ -e \"$path\" ] || continue; base=\"$(basename \"$path\")\"; case \"$base\" in nix|boot|mnt|tmp|var) continue ;; esac; if ${pkgs.util-linux}/bin/mountpoint -q \"$path\"; then continue; fi; ${pkgs.coreutils}/bin/rm -rf --one-file-system \"$path\"; done'";
     };
   };
 

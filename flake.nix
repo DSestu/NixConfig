@@ -41,48 +41,99 @@
     };
 
     nixosConfigurations = let
-      mkVm = {
-        graphics,
-        kde ? graphics,
-        hostname ? "nixos-vm",
-      }:
+      # Shared desktop VM profile used by both QEMU and VirtualBox targets.
+      sharedDesktopVm = {
+        graphics = true;
+        modules = {
+          kdeSuite = true;
+        };
+      };
+
+      # Profile dictionary: toggle modules/features here per target.
+      profiles = {
+        nixos-vm =
+          sharedDesktopVm
+          // {
+            hostname = "nixos-vm";
+            hypervisor = "qemu";
+          };
+
+        nixos-vm-headless = {
+          hostname = "nixos-vm-headless";
+          hypervisor = "qemu";
+          graphics = false;
+          modules = {
+            kdeSuite = false;
+          };
+        };
+
+        nixos-vbox =
+          sharedDesktopVm
+          // {
+            hostname = "nixos-vbox";
+            hypervisor = "virtualbox";
+          };
+      };
+
+      profileDefaults = {
+        hostname = "nixos-vm";
+        hypervisor = "qemu";
+        graphics = true;
+        modules = {
+          kdeSuite = true;
+        };
+      };
+
+      mkProfile = name: profile: let
+        cfg = lib.recursiveUpdate profileDefaults profile;
+        commonModules = [
+          ./nixos/vm.nix
+          # Always enabled on every profile.
+          impermanence.nixosModules.impermanence
+          home-manager.nixosModules.home-manager
+          {
+            networking.hostName = cfg.hostname;
+            home-manager = {
+              useGlobalPkgs = true;
+              useUserPackages = true;
+              backupFileExtension = "bak";
+              users.david.imports = [
+                ./modules/persistence.nix
+                ./home.nix
+              ];
+            };
+          }
+          ./modules/kde-suite.nix
+        ];
+
+        hypervisorModules =
+          if cfg.hypervisor == "qemu"
+          then [
+            {
+              virtualisation.vmVariant.virtualisation.graphics = cfg.graphics;
+            }
+          ]
+          else if cfg.hypervisor == "virtualbox"
+          then [
+            ({modulesPath, ...}: {
+              imports = [(modulesPath + "/virtualisation/virtualbox-image.nix")];
+            })
+            {
+              virtualisation.virtualbox.guest.enable = true;
+            }
+          ]
+          else [];
+      in
         nixpkgs.lib.nixosSystem {
           inherit system;
-          modules =
-            [
-              ./nixos/vm.nix
-              impermanence.nixosModules.impermanence
-              home-manager.nixosModules.home-manager
-              {
-                networking.hostName = hostname;
-                home-manager = {
-                  useGlobalPkgs = true;
-                  useUserPackages = true;
-                  backupFileExtension = "bak";
-                  sharedModules = lib.optionals kde [plasma-manager.homeModules.plasma-manager];
-                  users.david.imports =
-                    [
-                      ./modules/persistence.nix
-                      ./home.nix
-                    ]
-                    ++ lib.optionals kde [
-                      ./modules/plasma.nix
-                      ./modules/plasma-appletsrc.nix
-                      ./modules/konsole.nix
-                    ];
-                };
-              }
-              {
-                virtualisation.vmVariant.virtualisation.graphics = graphics;
-              }
-            ]
-            ++ lib.optionals kde [
-              ./modules/kde.nix
-            ];
+          specialArgs = {
+            profileName = name;
+            profileConfig = cfg;
+            inherit plasma-manager;
+          };
+          modules = commonModules ++ hypervisorModules;
         };
-    in {
-      nixos-vm = mkVm {graphics = true;};
-      nixos-vm-headless = mkVm {graphics = false; hostname = "nixos-vm-headless";};
-    };
+    in
+      lib.mapAttrs mkProfile profiles;
   };
 }

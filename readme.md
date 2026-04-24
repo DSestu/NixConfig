@@ -23,14 +23,22 @@ nix-collect-garbage -d
 Grab all keyboard shortcuts: `ctrl + alt + g`
 
 ```bash
-nix build '.#nixosConfigurations.nixos-vm.config.system.build.vm' && ./result/bin/run-nixos-vm -snapshot
+./scripts/run-vm-gui.sh
 ```
 
 ### Headless (serial console, output in your terminal)
 
 ```bash
-nix build '.#nixosConfigurations.nixos-vm-headless.config.system.build.vm' && ./result/bin/run-nixos-vm-headless-vm -snapshot
+./scripts/run-vm-headless.sh
 ```
+
+### VirtualBox (build OVA image)
+
+```bash
+./scripts/build-vbox-ova.sh
+```
+
+Import the generated `*.ova` from `./result/` into VirtualBox, then start it from the VirtualBox UI.
 
 ### Rebuilding inside the VM
 
@@ -59,3 +67,73 @@ sudo usermod -aG kvm david
 ```
 
 Then log out and log back in for the changes to take effect.
+
+## Adding a new module
+
+This repo supports three common module patterns:
+
+- Home Manager only module (user-level config/packages)
+- NixOS only module (system services/kernel/networking)
+- Shared module imported by both, with option guards
+
+### 1) Create the module file
+
+Example:
+
+```bash
+mkdir -p modules
+micro modules/example.nix
+```
+
+Minimal Home Manager module template:
+
+```nix
+{
+  pkgs,
+  ...
+}: {
+  home.packages = with pkgs; [
+    hello
+  ];
+}
+```
+
+### 2) Wire it where it belongs
+
+Home Manager (always loaded for user `david`):
+
+- Add `./modules/example.nix` to `imports` in `home.nix`.
+
+NixOS (loaded per profile/host):
+
+- Add `./modules/example.nix` to the `modules` list in `flake.nix` inside `mkProfile` (global), or gate it with a profile flag (recommended).
+
+### 3) If you want per-profile enable/disable
+
+Use the profile dictionary in `flake.nix`:
+
+1. Add a new toggle in `profileDefaults.modules`, for example `example = false;`
+2. Set it per profile under `profiles.<name>.modules.example = true/false;`
+3. Gate import/config with `lib.optionals cfg.modules.example [ ./modules/example.nix ]`
+
+This keeps module selection declarative and centralized.
+
+### 4) Build/test
+
+Home Manager check:
+
+```bash
+home-manager switch --flake .#david
+```
+
+NixOS profile check:
+
+```bash
+sudo nixos-rebuild switch --flake .#nixos-vm
+```
+
+Or for headless:
+
+```bash
+sudo nixos-rebuild switch --flake .#nixos-vm-headless
+```
