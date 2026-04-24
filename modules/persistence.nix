@@ -22,7 +22,7 @@
       "Downloads"
       "Pictures"
       "Videos"
-      "projects"
+      "github"
 
       # --- Shell state ---
       ".local/share/fish"
@@ -33,12 +33,17 @@
       ".local/share/direnv"
 
       # --- Browser profiles (sessions, cookies, extensions, bookmarks) ---
-      ".mozilla"
       ".config/google-chrome"
+      ".config/BraveSoftware"
+
+      # --- Game launchers ---
+      ".local/share/Steam"
+      ".config/gdlauncher_next"
+      ".local/share/gdlauncher_next"
 
       # --- IDE settings (not caches/indexes) ---
-      ".config/Code - OSS/User"
-      ".config/JetBrains"
+      ".config/Code/User"
+      ".config/Cursor/User"
     ];
 
     files = [
