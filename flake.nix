@@ -91,7 +91,7 @@
           };
       };
 
-      mkProfile = _: profile: let
+      mkProfile = name: profile: let
         cfg =
           {
             graphics = true;
@@ -100,7 +100,14 @@
           }
           // profile;
 
-        hostModule = {
+        # Auto-discovered per-profile overrides in nixos/hosts/<profile-name>/.
+        # The directory is the home for host-specific modules (e.g.
+        # hardware-configuration.nix on bare metal). Picked up automatically
+        # when default.nix exists; no flake wiring required.
+        hostDir = ./nixos/hosts + "/${name}";
+        hostModules = lib.optional (builtins.pathExists (hostDir + "/default.nix")) hostDir;
+
+        profileWiring = {
           networking.hostName = cfg.hostname;
           home-manager = {
             useGlobalPkgs = true;
@@ -127,7 +134,7 @@
         nixpkgs.lib.nixosSystem {
           inherit system;
           specialArgs = {inherit plasma-manager;};
-          modules = commonNixosModules ++ cfg.extraNixosModules ++ [hostModule] ++ hypervisorModules;
+          modules = commonNixosModules ++ hostModules ++ cfg.extraNixosModules ++ [profileWiring] ++ hypervisorModules;
         };
     in
       lib.mapAttrs mkProfile profiles;

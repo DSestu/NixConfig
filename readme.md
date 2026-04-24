@@ -110,6 +110,70 @@ Fallback via `nix run`:
 nix run github:nix-community/nixos-anywhere -- --flake .#<profile-name> <user>@<remote-host>
 ```
 
+## Per-profile host configuration
+
+Each profile can have a matching folder at `nixos/hosts/<profile-name>/`.
+If a `default.nix` exists there, `mkProfile` imports it automatically — no
+flake edits required. This is the place for host-specific modules that
+don't belong in the shared tree (hardware quirks, bootloader overrides,
+partitions, filesystems, custom kernel params, etc.).
+
+Layout:
+
+```text
+nixos/hosts/
+  nixos-desktop/
+    default.nix              # auto-imported for `nixos-desktop`
+    hardware-configuration.nix  # generated on the target, see below
+```
+
+VM profiles don't need a host folder — their bootloader/filesystems come
+from `nixos/platforms/vm-qemu.nix` or `nixos/platforms/vm-virtualbox.nix`.
+
+### Bare-metal: generating `hardware-configuration.nix`
+
+Bare-metal profiles (`hypervisor = "none"`) need a per-host
+`hardware-configuration.nix` with the machine's root-FS identifier,
+kernel modules, CPU microcode, and bootloader device. That file cannot
+be known ahead of time; it must be generated on the target.
+
+1. Boot the target from a NixOS install ISO, partition/format, and mount
+   the root at `/mnt` (or SSH into an already-running NixOS install).
+
+2. Generate the hardware config:
+
+   ```bash
+   # during install
+   sudo nixos-generate-config --root /mnt --show-hardware-config
+
+   # or on a running system
+   sudo nixos-generate-config --show-hardware-config
+   ```
+
+3. Redirect the output into the host folder on your workstation and
+   commit it:
+
+   ```bash
+   ssh <user>@<remote> 'sudo nixos-generate-config --show-hardware-config' \
+     > nixos/hosts/<profile-name>/hardware-configuration.nix
+   git add nixos/hosts/<profile-name>/hardware-configuration.nix
+   git commit -m "Add hardware-configuration.nix for <profile-name>"
+   ```
+
+4. Rebuild — locally to validate, then remotely to apply:
+
+   ```bash
+   nix eval ".#nixosConfigurations.<profile-name>.config.system.build.toplevel.drvPath"
+   sudo nixos-rebuild switch --flake .#<profile-name> \
+     --target-host <user>@<remote> --use-remote-sudo
+   ```
+
+The `default.nix` in each host folder guards the hardware-config import
+with `builtins.pathExists`, so the flake keeps evaluating before the
+file has been produced (bare-metal profiles will still fail at build
+time with a clear `fileSystems`/`boot.loader` assertion — that's the
+signal to run step 2).
+
 ## Performance notes
 
 ### KVM acceleration
