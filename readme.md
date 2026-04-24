@@ -10,6 +10,50 @@ nix run github:nix-community/plasma-manager
 nix flake update nixpkgs
 ```
 
+## Update a remote machine from local
+
+Run from this repo on your local machine:
+
+```bash
+sudo nixos-rebuild switch --flake .#<profile-name> --target-host <user>@<remote-host> --use-remote-sudo
+```
+
+Example:
+
+```bash
+sudo nixos-rebuild switch --flake .#nixos-vm --target-host david@192.168.1.50 --use-remote-sudo
+```
+
+Optional dry-run style build first:
+
+```bash
+sudo nixos-rebuild build --flake .#<profile-name> --target-host <user>@<remote-host> --use-remote-sudo
+```
+
+## Remote install/push over SSH with nixos-anywhere
+
+`nixos-anywhere` is best for first install or full reprovision over SSH.
+
+WARNING: this is destructive by default (it can repartition/reinstall the target machine).
+
+From this repo on your local machine:
+
+```bash
+nixos-anywhere --flake .#<profile-name> <user>@<remote-host>
+```
+
+Example:
+
+```bash
+nixos-anywhere --flake .#nixos-vm root@192.168.1.50
+```
+
+If `nixos-anywhere` is not on PATH yet, run via nix:
+
+```bash
+nix run github:nix-community/nixos-anywhere -- --flake .#<profile-name> <user>@<remote-host>
+```
+
 ## Garbage collect
 
 ```bash
@@ -17,6 +61,8 @@ nix-collect-garbage -d
 ```
 
 ## Launching the VM
+
+VM targets now reuse the same base machine config as real-machine targets. Only hypervisor-specific bits differ.
 
 ### Graphical (QEMU window + KDE)
 

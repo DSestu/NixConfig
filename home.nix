@@ -6,6 +6,7 @@
   imports = [
     ./modules/fish.nix
     ./modules/dev.nix
+    ./modules/deployment.nix
     ./modules/network.nix
     ./modules/pentest.nix
   ];

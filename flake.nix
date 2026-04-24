@@ -46,6 +46,7 @@
         graphics = true;
         modules = {
           kdeSuite = true;
+          gaming = true;
         };
       };
 
@@ -58,12 +59,20 @@
             hypervisor = "qemu";
           };
 
+        nixos-desktop =
+          sharedDesktopVm
+          // {
+            hostname = "nixos-desktop";
+            hypervisor = "none";
+          };
+
         nixos-vm-headless = {
           hostname = "nixos-vm-headless";
           hypervisor = "qemu";
           graphics = false;
           modules = {
             kdeSuite = false;
+            gaming = false;
           };
         };
 
@@ -81,13 +90,14 @@
         graphics = true;
         modules = {
           kdeSuite = true;
+          gaming = false;
         };
       };
 
       mkProfile = name: profile: let
         cfg = lib.recursiveUpdate profileDefaults profile;
         commonModules = [
-          ./nixos/vm.nix
+          ./nixos/base.nix
           # Always enabled on every profile.
           impermanence.nixosModules.impermanence
           home-manager.nixosModules.home-manager
@@ -100,6 +110,8 @@
               users.david.imports = [
                 ./modules/persistence.nix
                 ./home.nix
+              ] ++ lib.optionals cfg.modules.gaming [
+                ./modules/gaming.nix
               ];
             };
           }
@@ -109,18 +121,14 @@
         hypervisorModules =
           if cfg.hypervisor == "qemu"
           then [
+            ./nixos/platforms/vm-qemu.nix
             {
               virtualisation.vmVariant.virtualisation.graphics = cfg.graphics;
             }
           ]
           else if cfg.hypervisor == "virtualbox"
           then [
-            ({modulesPath, ...}: {
-              imports = [(modulesPath + "/virtualisation/virtualbox-image.nix")];
-            })
-            {
-              virtualisation.virtualbox.guest.enable = true;
-            }
+            ./nixos/platforms/vm-virtualbox.nix
           ]
           else [];
       in
