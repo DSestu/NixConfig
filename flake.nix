@@ -135,7 +135,6 @@
             backupFileExtension = "bak";
             users.david.imports =
               commonHomeImports
-              ++ (lib.optional cfg.impermanence impermanence.homeManagerModules.impermanence)
               ++ (lib.optional cfg.impermanence ./modules/persistence.nix)
               ++ cfg.extraHomeImports;
           };
