@@ -60,10 +60,60 @@ Grab keyboard with `ctrl + alt + g`.
 
 Import the generated `*.ova` from `./result/` into VirtualBox, then start it from the VirtualBox UI.
 
+### VirtualBox shared folder (repo on host)
+
+Add the repo as a shared folder from the host (Windows PowerShell/CMD):
+
+```bash
+VBoxManage sharedfolder add "nixos-vbox" --name "nixconfig" --hostpath "D:\projets_python_ssd\Sencrop\NixConfig" --automount
+```
+
+Inside the NixOS guest:
+
+```bash
+sudo mkdir -p /mnt/nixconfig
+sudo mount -t vboxsf -o uid=$(id -u),gid=$(id -g),dmode=775,fmode=664 nixconfig /mnt/nixconfig
+ls /mnt/nixconfig
+```
+
+If your user cannot access the mount:
+
+```bash
+sudo usermod -aG vboxsf $USER
+```
+
+Then log out/in (or reboot).
+
+Optional: make the mount persistent for the `nixos-vbox` profile by adding this to
+`nixos/hosts/nixos-vbox/default.nix`:
+
+```nix
+fileSystems."/mnt/nixconfig" = {
+  device = "nixconfig";
+  fsType = "vboxsf";
+  options = [ "rw" "uid=1000" "gid=100" "dmode=0775" "fmode=0664" ];
+};
+```
+
+If unmount fails with "target is busy", leave the folder and use lazy unmount:
+
+```bash
+cd ~
+sudo umount -l /mnt/nixconfig
+sudo mount -t vboxsf -o uid=$(id -u),gid=$(id -g),dmode=775,fmode=664 nixconfig /mnt/nixconfig
+```
+
+If `lsof` is available, you can inspect active users before unmounting:
+
+```bash
+sudo lsof +D /mnt/nixconfig
+```
+
 ### Rebuild inside VM
 
 ```bash
-nixos-rebuild switch
+nixos-rebuild build --flake .#nixos-vbox
+sudo ./result/bin/switch-to-configuration switch
 ```
 
 ## Remote deployment
