@@ -46,8 +46,6 @@
       ".config/Cursor/User"
     ];
 
-    files = [
-      ".bash_history"
-    ];
+    files = [];
   };
 }
