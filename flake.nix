@@ -15,6 +15,10 @@
     };
     impermanence.url = "github:nix-community/impermanence";
     nixos-wsl.url = "github:nix-community/NixOS-WSL/main";
+    disko = {
+      url = "github:nix-community/disko";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = {
@@ -23,6 +27,7 @@
     plasma-manager,
     impermanence,
     nixos-wsl,
+    disko,
     ...
   }: let
     system = "x86_64-linux";
@@ -43,12 +48,16 @@
     };
 
     nixosConfigurations = let
-      # Baseline applied to every profile.
+      # Baseline applied to every profile. The `disko` module is inert
+      # unless a profile sets `disko.devices` (typically by importing one
+      # of `nixos/disko/single-disk-{uefi,bios}.nix` from its host folder
+      # — see readme → "Remote install/reprovision (nixos-anywhere)").
       commonNixosModules = [
         ./nixos/modules/profile-options.nix
         ./nixos/base.nix
         impermanence.nixosModules.impermanence
         home-manager.nixosModules.home-manager
+        disko.nixosModules.default
       ];
       commonHomeImports = [
         ./home.nix

@@ -630,79 +630,52 @@ step into nothing.
 
 #### 4. Pick a partitioning strategy
 
-**Recommended: declarative partitioning with `disko`** — the layout
-lives in your flake; every reinstall produces the exact same disk.
-Wire it up once (skip if your flake already imports disko):
+**Recommended: declarative partitioning with disko.** The flake already
+ships disko as an input and adds `disko.nixosModules.default` to
+`commonNixosModules` (see `flake.nix`). Two ready-made layouts live
+under `nixos/disko/`:
 
-In `flake.nix`, add to `inputs`:
+- `nixos/disko/single-disk-uefi.nix` — GPT, 512 MiB ESP at `/boot`,
+  ext4 root at `/`. Pairs with systemd-boot. Use this for any UEFI
+  target (modern bare metal, VirtualBox VMs created with "Enable EFI"
+  ticked, most cloud images).
+- `nixos/disko/single-disk-bios.nix` — GPT with a 1 MiB BIOS-boot
+  partition + ext4 root. Pairs with GRUB on `/dev/sda`. Use this for
+  VirtualBox VMs created without "Enable EFI" (the default), or older
+  bare metal without UEFI firmware.
 
-```nix
-disko = {
-  url = "github:nix-community/disko";
-  inputs.nixpkgs.follows = "nixpkgs";
-};
-```
+Both are designed to coexist with the impermanence wipe-root pattern
+(`nixos/modules/impermanence-wipe.nix`): wipe-root preserves top-level
+`nix` and `boot`, so `/boot` (bootloader) and `/nix/persist`
+(impermanence's persisted-paths source) survive every boot. No
+subvolumes, no swap, no LVM — same shape as the OVA/QEMU layouts.
 
-Add `disko` to the `outputs` arg list and append
-`disko.nixosModules.default` to `commonNixosModules`.
-
-Create `nixos/disko/single-disk-uefi.nix`:
-
-```nix
-{lib, ...}: {
-  disko.devices.disk.main = {
-    type = "disk";
-    device = lib.mkDefault "/dev/sda";
-    content = {
-      type = "gpt";
-      partitions = {
-        ESP = {
-          size = "512M";
-          type = "EF00";
-          content = {
-            type = "filesystem";
-            format = "vfat";
-            mountpoint = "/boot";
-            mountOptions = ["umask=0077"];
-          };
-        };
-        root = {
-          size = "100%";
-          content = {
-            type = "filesystem";
-            format = "ext4";
-            mountpoint = "/";
-          };
-        };
-      };
-    };
-  };
-}
-```
-
-For BIOS firmware (default VirtualBox VMs without "Enable EFI"), swap
-the `ESP` partition for a 1 MiB `BIOS boot` partition (`type = "EF02"`),
-drop `boot.loader.systemd-boot`, and use
-`boot.loader.grub.device = "/dev/sda"` instead.
-
-Import the disko module from the host folder of the profile you're
-installing — e.g. `nixos/hosts/<profile-name>/default.nix`:
+To install a profile onto a target, import the right disko file from
+that profile's host folder. Example for a hypothetical bare-metal
+desktop:
 
 ```nix
+# nixos/hosts/my-desktop/default.nix
 {...}: {
   imports = [../../disko/single-disk-uefi.nix];
-  boot.loader.systemd-boot.enable = true;
-  boot.loader.efi.canTouchEfiVariables = true;
+  # Uncomment if the target's disk isn't /dev/sda:
+  # disko.devices.disk.main.device = "/dev/nvme0n1";
 }
 ```
 
-Note for `nixos-vbox`: the existing OVA-targeting profile gets its
-`fileSystems` from `nixos/platforms/vm-virtualbox.nix` and clashes with
-disko. If you want both an OVA build *and* a metal-style install, copy
-`nixos-vbox` to a new profile (e.g. `nixos-vbox-metal`) with
-`hypervisor = "none"` and import disko there.
+That's the full wiring: flake input + commonNixosModules entry are
+already in place, so a single `imports = [...]` line in the host folder
+is the entire opt-in.
 
-**Alternative: manual partitioning** — skip the flake changes and
+Note for `nixos-vbox`: the existing OVA-targeting profile gets its
+`fileSystems` from `nixos/platforms/vm-virtualbox.nix` and would clash
+with disko if you imported one of the disk files into it. To install
+the same configuration onto a real disk via `nixos-anywhere`, define a
+sibling profile in `flake.nix` (e.g. `nixos-vbox-metal`) with
+`hypervisor = "none"`, then import a disko layout from
+`nixos/hosts/nixos-vbox-metal/default.nix`.
+
+**Alternative: manual partitioning.** Skip the disko import and
 partition the target by hand before running `nixos-anywhere`. On the
 target:
 
