@@ -4,7 +4,7 @@
   ...
 }:
 let
-  wallpaper = ../wallpapers/wallpaper.jpg;
+  wallpaper = ./wallpapers/wallpaper.jpg;
 in {
   programs.plasma = {
     enable = true;

@@ -1,6 +1,13 @@
-# System-wide persistence configuration
-# This file is used to configure the persistence whitelist of the system
-# This is used in par with /modules/persistence.nix to configure the persistence whitelist of the home directory (user-wide persistence)
+# System-wide NixOS baseline applied to every profile (see
+# `commonNixosModules` in flake.nix).
+#
+# This file owns:
+#   - System-wide impermanence persistence map (paired with
+#     `modules/home/persistence.nix` for the user-side equivalent).
+#   - Common system services, user account, locale, nix settings, GC.
+#
+# Per-profile NixOS extras go via `extraNixosImports` or the host
+# folder's `default.nix`, not here.
 {
   config,
   lib,
@@ -9,11 +16,7 @@
 }: {
   nixpkgs.config.allowUnfree = true;
 
-  # System-wide tools
-  imports = [
-    # ../modules/common.nix
-    # ../modules/network.nix
-  ];
+  imports = [];
 
   # Impermanence: `/` is wiped on every boot by the platform-level wipe-root
   # service, so anything we want to survive a reboot has to be listed here.

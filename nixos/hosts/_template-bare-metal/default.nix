@@ -15,11 +15,21 @@
 #     extras (graphics, gaming, etc.) to taste.
 #  3. Edit your copy of this `default.nix` (NOT this template) — flip
 #     between UEFI / BIOS disko layouts, override the disk device, and
-#     drop in any host-specific bootloader or hardware quirks below.
+#     drop in any host-specific bootloader or hardware quirks below or
+#     in `./nixos/`.
 #  4. Run `nixos-anywhere` from WSL with
-#     `--generate-hardware-config nixos-generate-config nixos/hosts/<your-host>/hardware-configuration.nix`
+#     `--generate-hardware-config nixos-generate-config nixos/hosts/<your-host>/nixos/hardware-configuration.nix`
 #     — the `pathExists` guard below lets the flake evaluate before that
 #     file exists, then auto-imports it after first install.
+#
+# Layout of a host folder (this template demonstrates all four)
+# ─────────────────────────────────────────────────────────────
+#     nixos/hosts/<your-host>/
+#       default.nix               # ← this file: NixOS-side host entry
+#       home.nix                  # HM-side host entry (auto-discovered)
+#       nixos/                    # NixOS sub-modules for this host only
+#         hardware-configuration.nix
+#       home/                     # HM sub-modules for this host only
 #
 # What's wired in by default
 # ──────────────────────────
@@ -27,7 +37,7 @@
 #    `/boot`, ext4 root at `/`, paired with systemd-boot. Compatible with
 #    the impermanence wipe-root pattern (preserves top-level `boot` and
 #    `nix`, so the bootloader and `/nix/persist` survive every reboot).
-#  - Auto-import of `hardware-configuration.nix` once it lands here.
+#  - Auto-import of `./nixos/hardware-configuration.nix` once it lands.
 #
 # Customization points
 # ────────────────────
@@ -36,8 +46,8 @@
 #  - Different disk device (NVMe, second SATA, etc.): override
 #    `disko.devices.disk.main.device` below.
 #  - Per-host kernel modules, microcode, fan curves, dual-boot grub,
-#    LUKS, swap, separate `/home`, etc.: add them as additional `imports`
-#    or as `config = { ... }` attributes in the new file (NOT here).
+#    LUKS, swap, separate `/home`, etc.: drop a file under `./nixos/`
+#    and add it to `imports` here (NOT in this template).
 # ─────────────────────────────────────────────────────────────────────────────
 {lib, ...}: {
   imports =
@@ -62,10 +72,10 @@
       # before that file lands, so we guard the import.
       #
       # After the first successful install, commit the generated file:
-      #     git add nixos/hosts/<your-host>/hardware-configuration.nix
+      #     git add nixos/hosts/<your-host>/nixos/hardware-configuration.nix
       #     git commit -m "Add hardware-configuration for <your-host>"
       let
-        hw = ./hardware-configuration.nix;
+        hw = ./nixos/hardware-configuration.nix;
       in
         if builtins.pathExists hw
         then [hw]
@@ -87,6 +97,9 @@
   #   boot.kernelModules = ["kvm-intel"];
   #   hardware.cpu.intel.updateMicrocode = true;
   #   services.fwupd.enable = true;
+  #
+  # Or, for anything more than a few lines, drop a sub-module under
+  # `./nixos/` and import it from the `imports` list above.
   #
   # Keep this template empty — it should always evaluate cleanly so
   # `nix flake check` stays green.

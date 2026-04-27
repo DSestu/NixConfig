@@ -48,32 +48,57 @@
     };
 
     nixosConfigurations = let
-      # Baseline applied to every profile. The `disko` module is inert
-      # unless a profile sets `disko.devices` (typically by importing one
-      # of `nixos/disko/single-disk-{uefi,bios}.nix` from its host folder
-      # — see readme → "Remote install/reprovision (nixos-anywhere)").
+      # ═══════════════════════════════════════════════════════════════════
+      #  Per-profile recipe (read this first).
+      # ═══════════════════════════════════════════════════════════════════
+      #
+      #  Every profile in the dictionary below is built from FIVE
+      #  ingredients, in this order:
+      #
+      #    1. commonNixosModules    — system-wide baseline (every profile)
+      #    2. commonHomeImports     — user-wide baseline   (every profile)
+      #    3. host folder           — auto-discovered from nixos/hosts/<name>/
+      #                               (default.nix → NixOS, home.nix → HM)
+      #    4. impermanence flag     — flips profiles.impermanence.enable on
+      #                               and auto-adds modules/home/persistence.nix
+      #    5. extras + platform     — extraNixosImports / extraHomeImports
+      #                               from the profile entry, plus the
+      #                               module for `hypervisor = "..."`
+      #
+      #  To add a profile: copy an existing entry, rename, tweak. To add
+      #  per-profile config without touching this file, drop a default.nix
+      #  (NixOS) or home.nix (HM) into nixos/hosts/<name>/.
+      # ═══════════════════════════════════════════════════════════════════
+
+      # ─── 1. NixOS baseline (system-wide, every profile) ──────────────
+      # `disko.nixosModules.default` is loaded but inert until a host
+      # folder imports one of `nixos/disko/single-disk-{uefi,bios}.nix`.
       commonNixosModules = [
-        # The profile-options module is used to configure the impermanence and disko modules for each profile
         ./nixos/modules/profile-options.nix
         ./nixos/base.nix
         impermanence.nixosModules.impermanence
         home-manager.nixosModules.home-manager
-        # The disko opt-in module is inert unless a profile sets `disko.devices` (typically by importing one of `nixos/disko/single-disk-{uefi,bios}.nix` from its host folder — see readme → "Remote install/reprovision (nixos-anywhere)")
-        # See the template bare-metal profile for an example of how to use it.
         disko.nixosModules.default
       ];
+
+      # ─── 2. Home Manager baseline (user-wide, every profile) ─────────
+      # `home.nix` aggregates all the modules under `modules/home/`.
       commonHomeImports = [
         ./home.nix
       ];
 
-      # Shared desktop profile used by every graphical target.
-      # Opt-in extras (like gaming) are added per-profile below.
+      # ─── Shared desktop profile (sugar for graphical targets) ─────────
+      # Adds the KDE Plasma stack on top of the baseline. Composed via
+      # `// {...}` in the profile dictionary, so individual profiles can
+      # still override or append.
       sharedDesktopProfile = {
         graphics = true;
-        extraNixosModules = [./modules/kde-suite.nix];
+        extraNixosImports = [./modules/nixos/kde-suite.nix];
       };
 
-      # Profile dictionary: add/remove modules per target here.
+      # ─── Profile dictionary ──────────────────────────────────────────
+      # Each entry: { hostname, hypervisor, impermanence?, graphics?,
+      #               extraNixosImports?, extraHomeImports? }
       profiles = {
         # ─────────────────────────────────────────────────────────────────
         # TEMPLATE — DO NOT EDIT, DO NOT DEPLOY.
@@ -87,14 +112,14 @@
         #
         # What's enabled here:
         #   - `sharedDesktopProfile` → graphics on, KDE Plasma stack
-        #     (via `extraNixosModules = [./modules/kde-suite.nix]`).
+        #     (via `extraNixosImports = [./modules/nixos/kde-suite.nix]`).
         #   - `hypervisor = "none"`  → no VM platform module; disko owns
         #                              partitions and the bootloader
         #                              (see the matching host folder).
         #   - `impermanence = true`  → wipe-root on every boot, persist
         #                              only what's listed in
         #                              `nixos/base.nix` (system) and
-        #                              `modules/persistence.nix` (home).
+        #                              `modules/home/persistence.nix` (home).
         #   - gaming home module     → Steam, GDLauncher, etc. for the user.
         #
         # The matching `nixos/hosts/_template-bare-metal/default.nix`
@@ -109,7 +134,7 @@
             hostname = "REPLACE-ME";
             hypervisor = "none";
             impermanence = true;
-            extraHomeImports = [./modules/gaming.nix];
+            extraHomeImports = [./modules/home/gaming.nix];
           };
 
         nixos-vm =
@@ -118,7 +143,7 @@
             hostname = "nixos-vm";
             hypervisor = "qemu";
             impermanence = true;
-            extraHomeImports = [./modules/gaming.nix];
+            extraHomeImports = [./modules/home/gaming.nix];
           };
 
         nixos-desktop =
@@ -126,12 +151,12 @@
           // {
             hostname = "nixos-desktop";
             hypervisor = "none";
-            extraHomeImports = [./modules/gaming.nix];
+            extraHomeImports = [./modules/home/gaming.nix];
             impermanence = true;
           };
 
         nixos-vm-headless = {
-          # Here the absence of sharedDesktopProfile means that the profile is not a desktop profile (because of the graphics = false and absence of kde-suite.nix module)
+          # No `sharedDesktopProfile` → no KDE, no graphics. Headless.
           hostname = "nixos-vm-headless";
           hypervisor = "qemu";
           graphics = false;
@@ -152,30 +177,38 @@
           # Keep disabled by default to avoid accidental ephemeral behavior.
           # This also guarantees no interaction with the Windows host FS.
           impermanence = false;
-          extraHomeImports = [
-            ./modules/wsl-home.nix
-            ./nixos/hosts/nixos-wsl/fish.nix
-          ];
+          # WSL-specific HM tweaks. The host-folder home.nix (auto-discovered
+          # below) handles the per-profile fish overrides.
+          extraHomeImports = [./modules/home/wsl-home.nix];
         };
       };
 
+      # ─── mkProfile: assembles a single profile into a nixosSystem ────
       mkProfile = name: profile: let
+        # Defaults for optional per-profile fields.
         cfg =
           {
             graphics = true;
-            extraNixosModules = [];
+            extraNixosImports = [];
             extraHomeImports = [];
             impermanence = false;
           }
           // profile;
 
-        # Auto-discovered per-profile overrides in nixos/hosts/<profile-name>/.
-        # The directory is the home for host-specific modules (e.g.
-        # hardware-configuration.nix on bare metal). Picked up automatically
-        # when default.nix exists; no flake wiring required.
+        # ── 3. Host folder (auto-discovered) ──────────────────────────
+        # `nixos/hosts/<name>/default.nix` → NixOS-side host module
+        # `nixos/hosts/<name>/home.nix`    → HM-side    host module
+        # Both optional. Drop in either to add per-profile config without
+        # touching this file. Each can `imports = [./nixos/...]` or
+        # `imports = [./home/...]` to organize per-host sub-modules.
         hostDir = ./nixos/hosts + "/${name}";
-        hostModules = lib.optional (builtins.pathExists (hostDir + "/default.nix")) hostDir;
+        hostNixosImports =
+          lib.optional (builtins.pathExists (hostDir + "/default.nix")) hostDir;
+        hostHomeImports =
+          lib.optional (builtins.pathExists (hostDir + "/home.nix"))
+          (hostDir + "/home.nix");
 
+        # ── Profile wiring (translates the profile entry into config) ──
         profileWiring = {
           networking.hostName = cfg.hostname;
           profiles.impermanence.enable = cfg.impermanence;
@@ -184,14 +217,21 @@
             useUserPackages = true;
             backupFileExtension = "bak";
             users.david.imports =
+              # 2. Common HM baseline.
               commonHomeImports
-              # if dictionary impermanence is true, then import the persistence.nix module
-              ++ (lib.optional cfg.impermanence ./modules/persistence.nix)
+              # 4. Impermanence: auto-add the user-side persistence map.
+              ++ (lib.optional cfg.impermanence ./modules/home/persistence.nix)
+              # 3. Host-folder HM module (if home.nix exists).
+              ++ hostHomeImports
+              # 5. Per-profile HM extras.
               ++ cfg.extraHomeImports;
           };
         };
 
-        # Extra modules for the hypervisor platform (qemu, virtualbox, wsl)
+        # ── 5. Platform module (selected by `hypervisor`) ─────────────
+        # Owns root FS, bootloader, and any platform-specific quirks.
+        # Bare-metal (`hypervisor = "none"`) leaves this empty; the host
+        # folder + a disko layout supply the equivalent.
         hypervisorModules =
           if cfg.hypervisor == "qemu"
           then [
@@ -210,16 +250,20 @@
             ./nixos/platforms/wsl.nix
           ]
           else [];
-
       in
         nixpkgs.lib.nixosSystem {
           inherit system;
           specialArgs = {inherit plasma-manager;};
           modules =
+            # 1. Common NixOS baseline.
             commonNixosModules
-            ++ hostModules
-            ++ cfg.extraNixosModules
+            # 3. Host-folder NixOS module (if default.nix exists).
+            ++ hostNixosImports
+            # 5. Per-profile NixOS extras.
+            ++ cfg.extraNixosImports
+            # 2/4. Profile wiring + impermanence + HM imports.
             ++ [profileWiring]
+            # 5. Platform module.
             ++ hypervisorModules;
         };
     in

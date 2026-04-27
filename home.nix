@@ -4,13 +4,13 @@
   ...
 }: {
   imports = [
-    ./modules/common.nix
-    ./modules/fish.nix
-    ./modules/dev.nix
-    ./modules/deployment.nix
-    ./modules/network.nix
-    ./modules/pentest.nix
-    ./modules/gaming.nix
+    ./modules/home/common.nix
+    ./modules/home/fish.nix
+    ./modules/home/dev.nix
+    ./modules/home/deployment.nix
+    ./modules/home/network.nix
+    ./modules/home/pentest.nix
+    ./modules/home/gaming.nix
   ];
 
   home.username = "david";

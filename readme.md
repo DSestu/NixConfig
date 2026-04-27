@@ -51,7 +51,7 @@ Compute latest SRI hash:
 Compute and replace an existing hash in a file:
 
 ```bash
-./scripts/update-appimage-hash.sh "https://example.com/MyApp-x86_64.AppImage" --replace modules/gaming.nix "sha256-OLD_HASH"
+./scripts/update-appimage-hash.sh "https://example.com/MyApp-x86_64.AppImage" --replace modules/home/gaming.nix "sha256-OLD_HASH"
 ```
 
 ## WSL host setup (run once)
@@ -269,8 +269,8 @@ The `nixos-vbox` profile has `impermanence = true`. On every boot, an
 initrd `wipe-root` service blows away `/` except for `/nix`, `/boot`, and
 `/tmp`; everything declared under `environment.persistence."/nix/persist"`
 (see `nixos/base.nix`) and `home.persistence."/nix/persist"` (see
-`modules/persistence.nix`) is bind-mounted back from `/nix/persist`. If
-you want a paths to survive reboots, add it to one of those lists.
+`modules/home/persistence.nix`) is bind-mounted back from `/nix/persist`.
+If you want a path to survive reboots, add it to one of those lists.
 
 First boot specifics:
 
@@ -278,8 +278,9 @@ First boot specifics:
   first boot, `/etc/shadow` is persisted, so `passwd` changes stick.
 - Host SSH keys are generated on first boot and then persisted.
 - Anything you put in your home directory but didn't list in
-  `modules/persistence.nix` will be gone after the next reboot — that is
-  the point. Add it to the list and rebuild if you want it to stay.
+  `modules/home/persistence.nix` will be gone after the next reboot —
+  that is the point. Add it to the list and rebuild if you want it to
+  stay.
 
 ### Importing and configuring the VM in VirtualBox
 
@@ -375,8 +376,8 @@ reboot, persistence is broken — re-check `environment.persistence` in
 
 Bonus check: before rebooting, `touch /tmp-test-file` and
 `touch ~/throwaway`. After reboot, `/tmp-test-file` is gone (root was
-wiped) and `~/throwaway` is gone (home isn't in `modules/persistence.nix`).
-That's impermanence doing its job.
+wiped) and `~/throwaway` is gone (home isn't in
+`modules/home/persistence.nix`). That's impermanence doing its job.
 
 #### 6. Get the VM's IP for remote rebuilds
 
@@ -522,8 +523,8 @@ install over SSH. No OVA, no `cptofs`, no image-build pipeline involved.
 **WARNING:** destructive — `nixos-anywhere` repartitions the target disk.
 
 `nixos-anywhere` is already in home-manager via
-`modules/deployment.nix`. If `which nixos-anywhere` returns nothing, run
-`home-manager switch --flake .#david` first.
+`modules/home/deployment.nix`. If `which nixos-anywhere` returns
+nothing, run `home-manager switch --flake .#david` first.
 
 #### 1. Get the NixOS minimal ISO onto the target
 
@@ -703,7 +704,7 @@ With disko (step 4 declarative path):
 ```fish
 nixos-anywhere \
   --flake .#<profile-name> \
-  --generate-hardware-config nixos-generate-config nixos/hosts/<profile-name>/hardware-configuration.nix \
+  --generate-hardware-config nixos-generate-config nixos/hosts/<profile-name>/nixos/hardware-configuration.nix \
   root@<target-ip>
 ```
 
@@ -714,7 +715,7 @@ nixos-anywhere \
   --flake .#<profile-name> \
   --no-disko \
   --phases install,reboot \
-  --generate-hardware-config nixos-generate-config nixos/hosts/<profile-name>/hardware-configuration.nix \
+  --generate-hardware-config nixos-generate-config nixos/hosts/<profile-name>/nixos/hardware-configuration.nix \
   root@<target-ip>
 ```
 
@@ -747,7 +748,7 @@ sudo nixos-rebuild switch --flake .#<profile-name> \
 Commit the generated `hardware-configuration.nix`:
 
 ```fish
-git add nixos/hosts/<profile-name>/hardware-configuration.nix
+git add nixos/hosts/<profile-name>/nixos/hardware-configuration.nix
 git commit -m "Add hardware-configuration for <profile-name>"
 ```
 
@@ -844,11 +845,20 @@ Layout:
 ```text
 nixos/hosts/
   _template-bare-metal/      # SKELETON — copy, don't edit. See below.
-    default.nix
+    default.nix              # NixOS-side host entry (auto-imported)
+    home.nix                 # HM-side host entry (auto-imported)
+    nixos/                   # NixOS sub-modules used only by this host
+    home/                    # HM sub-modules used only by this host
   nixos-desktop/
     default.nix              # auto-imported for `nixos-desktop`
-    hardware-configuration.nix  # generated on the target, see below
+    nixos/
+      hardware-configuration.nix  # generated on the target, see below
 ```
+
+`mkProfile` looks up both files independently: `default.nix` is added to
+the NixOS module list, `home.nix` is added to the Home Manager imports.
+Drop either (or both) into a host folder to add per-profile config
+without touching `flake.nix`.
 
 VM profiles don't need a host folder — their bootloader/filesystems come
 from `nixos/platforms/vm-qemu.nix` or `nixos/platforms/vm-virtualbox.nix`.
@@ -891,8 +901,8 @@ be known ahead of time; it must be generated on the target.
 
    ```bash
    ssh <user>@<remote> 'sudo nixos-generate-config --show-hardware-config' \
-     > nixos/hosts/<profile-name>/hardware-configuration.nix
-   git add nixos/hosts/<profile-name>/hardware-configuration.nix
+     > nixos/hosts/<profile-name>/nixos/hardware-configuration.nix
+   git add nixos/hosts/<profile-name>/nixos/hardware-configuration.nix
    git commit -m "Add hardware-configuration.nix for <profile-name>"
    ```
 
@@ -932,21 +942,28 @@ Then log out and back in.
 
 ## Adding a new module
 
-This repo supports:
+The two evaluators (Home Manager and NixOS) are kept in separate trees:
 
-- Home Manager-only modules (user config/packages)
-- NixOS-only modules (system services/kernel/networking)
-- Shared modules imported by both (with option guards, see `modules/common.nix`)
+- `modules/home/` — Home Manager modules (user config/packages, dotfiles,
+  user-side persistence, etc.).
+- `modules/nixos/` — NixOS modules (system services, kernel, networking,
+  desktop suites, etc.).
+
+A module belongs to exactly one of these. There is no shared/dual-context
+tree any more — if a feature has both a system-side and a user-side, ship
+two files (one in each folder) and import them from their respective
+baselines.
 
 The mental model is minimal: every profile gets a fixed baseline, and each
-profile can append its own extras via two lists — `extraNixosModules` and
+profile can append its own extras via two lists — `extraNixosImports` and
 `extraHomeImports`. There are no flags or toggles.
 
 ### 1) Create module file
 
+Pick the right tree and create the file there. For a Home Manager module:
+
 ```bash
-mkdir -p modules
-micro modules/example.nix
+micro modules/home/example.nix
 ```
 
 Minimal Home Manager module:
@@ -962,32 +979,43 @@ Minimal Home Manager module:
 }
 ```
 
+For a NixOS module, drop it under `modules/nixos/` instead and use
+`environment.systemPackages` / `services.*` / etc.
+
 ### 2) Wire module
 
 Decide where it should live:
 
 - Everywhere (baseline for all profiles):
-  - Home Manager: add `./modules/example.nix` to `imports` in `home.nix`.
-  - NixOS: add `./modules/example.nix` to `commonNixosModules` in `flake.nix`.
+  - Home Manager: add `./modules/home/example.nix` to `imports` in
+    `home.nix`.
+  - NixOS: add `./modules/nixos/example.nix` to `commonNixosModules` in
+    `flake.nix`.
 - On every desktop profile (QEMU/VirtualBox/bare-metal desktop):
-  - NixOS-style: append to `sharedDesktopProfile.extraNixosModules`.
-  - (Home Manager-style: `sharedDesktopProfile` does not hold HM extras by
-    default — either add one there or add it per profile below.)
+  - NixOS-style: append to `sharedDesktopProfile.extraNixosImports`.
+  - (Home Manager-style: `sharedDesktopProfile` does not hold HM extras
+    by default — either add one there or add it per profile below.)
 - On a single profile only:
-  - Home Manager-style: set `extraHomeImports = [...]` on `profiles.<name>`.
-  - NixOS-style: set `extraNixosModules = [...]` on `profiles.<name>` (this
-    replaces the list inherited from `sharedDesktopProfile`; concatenate
-    `sharedDesktopProfile.extraNixosModules ++ [...]` if you want to keep
-    the desktop defaults).
+  - Home Manager-style: set `extraHomeImports = [...]` on
+    `profiles.<name>`.
+  - NixOS-style: set `extraNixosImports = [...]` on `profiles.<name>`
+    (this replaces the list inherited from `sharedDesktopProfile`;
+    concatenate `sharedDesktopProfile.extraNixosImports ++ [...]` if
+    you want to keep the desktop defaults).
+- On a single profile only, but the module is genuinely host-specific
+  (hardware quirks, dual-boot grub, fan curves, etc.): drop it under
+  `nixos/hosts/<name>/nixos/<your-module>.nix` (or `…/home/…` for HM)
+  and import it from that host's `default.nix` / `home.nix`. That keeps
+  the shared `modules/` trees free of host-specific clutter.
 
-Example — add `./modules/example.nix` only to `nixos-desktop` as a Home
-Manager import:
+Example — add `./modules/home/example.nix` only to `nixos-desktop` as a
+Home Manager import:
 
 ```nix
 nixos-desktop = sharedDesktopProfile // {
   hostname = "nixos-desktop";
   hypervisor = "none";
-  extraHomeImports = [./modules/example.nix];
+  extraHomeImports = [./modules/home/example.nix];
 };
 ```
 

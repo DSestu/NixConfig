@@ -15,16 +15,18 @@ and the directory tree explains itself.
 desktops, WSL distros — is a *profile* in `flake.nix`. A profile is a
 small attribute set (hostname, hypervisor, graphics yes/no,
 impermanence yes/no, extra modules). A single helper, `mkProfile`,
-turns each profile into a `nixosSystem` by composing four ingredients:
-the common baseline, the host folder, the platform module, and the
-profile's extras.
+turns each profile into a `nixosSystem` by composing five ingredients
+(common NixOS baseline, common HM baseline, the host folder, the
+impermanence flag, and the per-profile extras + platform module).
 
-**2. NixOS modules vs Home Manager modules are separate concerns.**
-NixOS modules configure the *system* (services, kernel, bootloader,
-filesystems). Home Manager modules configure the *user* (shell,
-editors, dotfiles, user-level packages). A few modules need to work in
-both contexts; they do that by guarding with `lib.optionalAttrs (options
-? home)` / `lib.optionalAttrs (options ? environment ...)`. Don't
+**2. NixOS modules vs Home Manager modules are separate concerns —
+and the directory tree reflects that.** NixOS modules configure the
+*system* (services, kernel, bootloader, filesystems). Home Manager
+modules configure the *user* (shell, editors, dotfiles, user-level
+packages). The split is enforced by the directory layout:
+`modules/home/` for HM, `modules/nixos/` for NixOS, and the same
+distinction inside each host folder (`nixos/hosts/<name>/home.nix` +
+`./home/` for HM, `default.nix` + `./nixos/` for NixOS). Don't
 collapse the split: the day you need to deploy a server profile
 without graphics or a user account, the split is what saves you.
 
@@ -52,30 +54,35 @@ profiles import a layout, so disko wakes up and owns partitioning +
 
 ```text
 .
-├── flake.nix                    # Profile dictionary + mkProfile
-├── home.nix                     # User baseline (HM imports common modules)
+├── flake.nix                    # Profile dictionary + mkProfile (read this first)
+├── home.nix                     # User baseline — imports every modules/home/*.nix
 ├── readme.md                    # User-facing build/install/troubleshooting
 ├── CONTRIBUTING.md              # ← you are here
 │
-├── modules/                     # Home Manager modules + dual-context modules
-│   ├── common.nix               # Dual-context: browsers etc.
-│   ├── network.nix              # Dual-context: tailscale CLI + service
-│   ├── deployment.nix           # HM: nixos-anywhere binary
-│   ├── dev.nix                  # HM: editors, devenv, git, ssh
-│   ├── fish.nix                 # HM: fish shell + theme + tools
-│   ├── tide-theme.fish          # Tide prompt config sourced by fish.nix
-│   ├── pentest.nix              # HM: nmap, bettercap, etc.
-│   ├── gaming.nix               # Dual-context: Steam, GDLauncher
-│   ├── persistence.nix          # HM: home.persistence (auto-added when impermanence on)
-│   ├── kde-suite.nix            # NixOS: orchestrator for KDE
-│   ├── kde/                     # NixOS + HM: split per-concern KDE config
-│   │   ├── kde.nix
-│   │   ├── plasma.nix
-│   │   ├── plasma-appletsrc.nix
-│   │   └── konsole.nix
-│   └── wsl-home.nix             # HM overrides for WSL (no user systemd)
+├── modules/
+│   ├── home/                    # Home Manager modules (every profile's user)
+│   │   ├── common.nix           # Browsers etc.
+│   │   ├── network.nix          # Tailscale CLI
+│   │   ├── deployment.nix       # nixos-anywhere binary
+│   │   ├── dev.nix              # editors, devenv, git, ssh
+│   │   ├── fish.nix             # fish shell + theme + tools
+│   │   ├── tide-theme.fish      # data file sourced by fish.nix
+│   │   ├── pentest.nix          # nmap, bettercap, etc.
+│   │   ├── gaming.nix           # Steam, GDLauncher
+│   │   ├── persistence.nix      # home.persistence (auto-added when impermanence on)
+│   │   └── wsl-home.nix         # HM overrides for WSL (no user systemd)
+│   │
+│   └── nixos/                   # NixOS modules (system-wide)
+│       ├── kde-suite.nix        # Orchestrator: wires NixOS-side KDE + HM-side plasma config
+│       └── kde/
+│           ├── kde.nix
+│           ├── plasma.nix
+│           ├── plasma-appletsrc.nix
+│           ├── konsole.nix
+│           ├── konsole/         # color schemes referenced by konsole.nix
+│           └── wallpapers/      # assets referenced by plasma.nix
 │
-├── nixos/                       # NixOS-only stuff
+├── nixos/                       # NixOS-only stuff that's NOT a reusable module
 │   ├── base.nix                 # Common NixOS baseline (user, ssh, persistence map, …)
 │   ├── modules/
 │   │   ├── profile-options.nix  # Declares `profiles.impermanence.{enable,preserveDirs}`
@@ -89,17 +96,29 @@ profiles import a layout, so disko wakes up and owns partitioning +
 │   │   └── single-disk-bios.nix # GPT + BIOS-boot stub + ext4 + GRUB
 │   └── hosts/                   # Per-profile host folders (auto-discovered)
 │       ├── _template-bare-metal/# SKELETON — copy, don't edit
-│       │   └── default.nix
+│       │   ├── default.nix      # NixOS-side host entry
+│       │   ├── home.nix         # HM-side host entry
+│       │   ├── nixos/           # NixOS sub-modules for this host (sub-folder)
+│       │   └── home/            # HM sub-modules for this host (sub-folder)
 │       ├── nixos-desktop/
 │       │   └── default.nix
 │       ├── nixos-vbox/
 │       │   ├── default.nix
-│       │   └── hardware-configuration.nix
+│       │   └── nixos/
+│       │       └── hardware-configuration.nix
 │       └── nixos-wsl/
-│           └── fish.nix         # HM-side WSL fish bits (imported via flake)
+│           ├── home.nix         # WSL profile is HM-only on the host side
+│           └── home/
+│               └── fish.nix
 │
 └── configuration.nix            # Safety-net fail when invoked without --flake
 ```
+
+The naming convention `modules/<scope>/...` mirrors `nixos/hosts/<name>/<scope>/...`:
+both use `home/` for Home Manager and `nixos/` for NixOS. When you're
+trying to remember where a file goes, the answer is always "which
+evaluator owns it, and is it shared across profiles or specific to one
+host?".
 
 ## How `mkProfile` composes a system
 
@@ -109,7 +128,7 @@ In `flake.nix`, each profile is one entry in the `profiles` attrset:
 nixos-desktop = sharedDesktopProfile // {
   hostname = "nixos-desktop";
   hypervisor = "none";
-  extraHomeImports = [./modules/gaming.nix];
+  extraHomeImports = [./modules/home/gaming.nix];
   impermanence = true;
 };
 ```
@@ -117,58 +136,93 @@ nixos-desktop = sharedDesktopProfile // {
 `mkProfile name profile` is called for every entry and produces a
 `nixpkgs.lib.nixosSystem`. It assembles the module list in this order:
 
-1. **`commonNixosModules`** — the unconditional baseline:
+1. **`commonNixosModules`** — the unconditional NixOS baseline:
    `profile-options.nix`, `nixos/base.nix`, the impermanence module,
    the home-manager module, and `disko.nixosModules.default`. Disko is
    inert here; it only activates if a later module sets
    `disko.devices`.
 
-2. **`hostModules`** — auto-discovered from
-   `nixos/hosts/<name>/default.nix` if that file exists. Drops in
-   host-specific bootloader tweaks, hardware-config imports, and (for
-   bare metal) the disko layout.
+2. **`commonHomeImports`** — the unconditional HM baseline:
+   `./home.nix`, which itself imports every file under `modules/home/`
+   (browsers, fish, dev tools, network, etc.).
 
-3. **`cfg.extraNixosModules`** — per-profile NixOS extras from the
-   profile entry (e.g. `[./modules/kde-suite.nix]` from
-   `sharedDesktopProfile`).
+3. **Host folder (auto-discovered)** — for each profile, `mkProfile`
+   probes `nixos/hosts/<name>/`:
+   - `default.nix` is added to NixOS modules if it exists
+   - `home.nix` is added to the HM imports if it exists
 
-4. **`profileWiring`** — the glue that translates the profile entry
-   into actual config: `networking.hostName`, the home-manager
-   user-imports list (`commonHomeImports` + persistence module if
-   impermanence is on + `cfg.extraHomeImports`), and the
-   `profiles.impermanence.enable` flag.
+   Each can `imports = [./nixos/foo.nix]` or `imports = [./home/bar.nix]`
+   to organize per-host sub-modules under the matching sub-folder.
 
-5. **`hypervisorModules`** — selected by `cfg.hypervisor`. Maps `qemu`
-   → `nixos/platforms/vm-qemu.nix`, `virtualbox` →
-   `nixos/platforms/vm-virtualbox.nix`, `wsl` → `nixos-wsl.nixosModules.default`
-   + `nixos/platforms/wsl.nix`, and `none` → no platform module
-   (host folder + disko provide root FS and bootloader).
+4. **Impermanence wiring** — when the profile sets `impermanence =
+   true`, `modules/home/persistence.nix` is appended to the user's HM
+   imports automatically, and `profiles.impermanence.enable = true`
+   flips on the wipe service.
+
+5. **Per-profile extras + platform module:**
+   - `cfg.extraNixosImports` — NixOS extras from the profile entry
+     (e.g. `[./modules/nixos/kde-suite.nix]` from `sharedDesktopProfile`).
+   - `cfg.extraHomeImports` — HM extras (e.g.
+     `[./modules/home/gaming.nix]`).
+   - `hypervisorModules` — selected by `cfg.hypervisor`. Maps `qemu`
+     → `nixos/platforms/vm-qemu.nix`, `virtualbox` →
+     `nixos/platforms/vm-virtualbox.nix`, `wsl` →
+     `nixos-wsl.nixosModules.default + nixos/platforms/wsl.nix`, and
+     `none` → no platform module (host folder + disko provide root FS
+     and bootloader).
 
 The same composition machine handles every target — there is no
 special path for "the bare-metal one" or "the WSL one". Adding a new
 hypervisor is a new branch in `hypervisorModules`; everything else
 stays put.
 
+## The per-profile recipe at a glance
+
+A profile entry in the dictionary has up to six fields. Mandatory:
+
+- `hostname` — string, becomes `networking.hostName`.
+- `hypervisor` — `"qemu"` | `"virtualbox"` | `"wsl"` | `"none"`.
+  Selects which platform module to load; `"none"` means bare metal
+  (host folder + disko own the bootloader and root FS).
+
+Optional (with defaults):
+
+- `graphics` (default `true`) — only consumed by the QEMU platform
+  module (toggles `-display gtk`).
+- `impermanence` (default `false`) — flips the wipe-root service on
+  and auto-adds `modules/home/persistence.nix` to the user's HM imports.
+- `extraNixosImports` (default `[]`) — list of NixOS modules to append
+  to the baseline.
+- `extraHomeImports` (default `[]`) — list of HM modules to append to
+  the user's imports.
+
+`sharedDesktopProfile` is a convenience: a small attrset (`graphics =
+true; extraNixosImports = [./modules/nixos/kde-suite.nix];`) merged
+with `// { ... }` into every desktop profile. Override or extend it
+per-profile by setting the same fields in the entry.
+
 ## Where new things go (decision tree)
 
 - *A user-level package* (CLI tool, editor, dotfile) → existing or new
-  Home Manager module under `modules/`. Add an import in `home.nix` if
-  it should be on every profile, or add it to one profile's
+  module under `modules/home/`. Add an import in `home.nix` if it
+  should be on every profile's user, or add it to one profile's
   `extraHomeImports` if it should be host-specific.
 
 - *A system-level service* (systemd unit, kernel option, daemon) →
-  NixOS module. If it's universal, drop it in `nixos/base.nix`. If
-  it's only for graphical hosts, append to
-  `sharedDesktopProfile.extraNixosModules`. If it's only for one host,
-  put it in `nixos/hosts/<name>/default.nix`.
+  module under `modules/nixos/`. If it's universal, drop it in
+  `nixos/base.nix`. If it's only for graphical hosts, append to
+  `sharedDesktopProfile.extraNixosImports`. If it's only for one host,
+  put it in `nixos/hosts/<name>/default.nix` (or under
+  `nixos/hosts/<name>/nixos/` and import from there).
 
-- *A package or service that has both a CLI and a daemon* (e.g.
-  Tailscale: `tailscale` binary for the user, `tailscaled` for the
-  system) → dual-context module under `modules/`, using
-  `lib.optionalAttrs (options ? home)` / `lib.optionalAttrs (options ?
-  services && options.services ? <name>)`. See `modules/network.nix`
-  for the canonical pattern, `modules/common.nix` and
-  `modules/gaming.nix` for the package-only variant.
+- *A user-level package or service that only makes sense on one host*
+  → drop a file under `nixos/hosts/<name>/home/` and import it from
+  `nixos/hosts/<name>/home.nix`.
+
+- *Per-host hardware quirks, kernel modules, microcode, bootloader
+  tweaks* → drop a file under `nixos/hosts/<name>/nixos/` and import
+  it from `nixos/hosts/<name>/default.nix`. `hardware-configuration.nix`
+  follows the same pattern (lives at `<host>/nixos/hardware-configuration.nix`).
 
 - *A new disk layout* (encrypted root, BTRFS subvolumes, separate
   `/home`, etc.) → new file in `nixos/disko/`. Keep impermanence
@@ -193,15 +247,18 @@ and the matching block in `flake.nix`. The short version:
 1. `cp -r nixos/hosts/_template-bare-metal nixos/hosts/<your-host>`.
 2. Copy the `_template-bare-metal` block in `flake.nix` to a new key
    with the same name. Set `hostname = "<your-host>"`.
-3. Edit your *copy* of `default.nix` to flip UEFI ↔ BIOS, override the
-   disk device, or add per-host kernel/bootloader tweaks. Leave the
-   template files alone.
+3. Edit your *copy* of `default.nix` (and optionally `home.nix`) to
+   flip UEFI ↔ BIOS, override the disk device, or add per-host
+   kernel/bootloader tweaks. Drop sub-modules under `./nixos/` (system)
+   or `./home/` (user) and import them from the matching entry. Leave
+   the template files alone.
 4. From WSL, run `nixos-anywhere --flake .#<your-host>
    --generate-hardware-config nixos-generate-config
-   nixos/hosts/<your-host>/hardware-configuration.nix root@<target>`.
-   The `pathExists` guard in your `default.nix` lets the flake
-   evaluate before the hardware config exists; nixos-anywhere
-   generates it on the target and writes it back to your repo.
+   nixos/hosts/<your-host>/nixos/hardware-configuration.nix
+   root@<target>`. The `pathExists` guard in your `default.nix` lets
+   the flake evaluate before the hardware config exists; nixos-anywhere
+   generates it on the target and writes it back to your repo at the
+   path you specified.
 5. Commit `hardware-configuration.nix`. The guard flips and the file
    is auto-imported on subsequent rebuilds.
 
@@ -246,7 +303,7 @@ bind-mounted back — is split:
   `/var/log`, etc.) are in `nixos/base.nix`'s
   `environment.persistence."/nix/persist"`.
 - *User paths* (`.ssh`, browser profiles, `Documents`, IDE settings,
-  etc.) are in `modules/persistence.nix`'s
+  etc.) are in `modules/home/persistence.nix`'s
   `home.persistence."/nix/persist"`. This module is auto-added to the
   user's HM imports by `mkProfile` whenever `impermanence = true`.
 
@@ -305,12 +362,22 @@ means "skeleton — don't deploy this directly".
 **Host folder naming.** Always matches the profile key exactly —
 that's what `mkProfile` looks up via `./nixos/hosts + "/${name}"`.
 
+**HM vs NixOS, everywhere.** The `home/` vs `nixos/` split shows up
+in two places: at the top of `modules/`, and inside each host folder.
+A file's directory tells you which evaluator loads it.
+
 **`mkDefault` vs `mkForce`.** Layout / platform modules use
 `mkDefault` so host folders can override without ceremony. Host
 folders use `mkForce` only when overriding a layout module's
 `mkDefault` would otherwise leave the option ambiguous (e.g.
 `nixos-vbox/default.nix` forces GRUB-EFI over the layout's
 systemd-boot default).
+
+**`extraHomeImports` and `extraNixosImports`** are intentionally
+named symmetrically. The pattern is "common baseline + per-profile
+extras". If you find yourself wanting a third bucket, ask whether
+the new thing belongs in the baseline (`commonNixosModules` /
+`home.nix`) or in a host folder before adding a knob.
 
 **Comment style.** Files that are non-obvious or set up
 gotcha-prone behavior (the wipe service, the disko layouts, the
@@ -345,7 +412,9 @@ checkout) — don't generalize that pattern.
   it's a mount point.
 - *"Hardware-config import errors on first install"* → the
   `pathExists` guard isn't there. Compare against
-  `nixos/hosts/_template-bare-metal/default.nix`.
+  `nixos/hosts/_template-bare-metal/default.nix`. Note that the
+  hardware-config now lives at `<host>/nixos/hardware-configuration.nix`,
+  not at the top of the host folder.
 - *"Sandbox restricted-setting warning"* → `nix.settings.trusted-users`
   doesn't include your user on the host running the build. See
   `nixos/platforms/wsl.nix`.

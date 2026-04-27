@@ -1,5 +1,11 @@
 {lib, ...}: {
-  imports = [];
+  imports = [
+    # Host-specific NixOS sub-modules under `./nixos/`. Add new files
+    # there and import them here. `hardware-configuration.nix` lives
+    # there too — guarded so the flake still evaluates if it hasn't
+    # been generated yet.
+    ./nixos/hardware-configuration.nix
+  ];
 
   networking.hostName = lib.mkForce "nixos-vbox";
 
