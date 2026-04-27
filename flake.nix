@@ -211,7 +211,9 @@
           lib.optional (builtins.pathExists (hostDir + "/home.nix"))
           (hostDir + "/home.nix");
 
+        ########### PROFILE WIRING ###########
         # ── Profile wiring (translates the profile entry into config) ──
+        # Home-wise config, home-manager wiring. Impermanence wiring is handled by the profile-options module.
         profileWiring = {
           networking.hostName = cfg.hostname;
           profiles.impermanence.enable = cfg.impermanence;
@@ -231,6 +233,8 @@
           };
         };
 
+
+        ########### HYPERVISOR MODULES / SYSTEM CONFIGURATION ###########
         # ── 5. Platform module (selected by `hypervisor`) ─────────────
         # Owns root FS, bootloader, and any platform-specific quirks.
         # Bare-metal (`hypervisor = "none"`) leaves this empty; the host
