@@ -126,6 +126,7 @@
         # imports the disko UEFI layout. Bootloader/disk/hardware tweaks
         # belong there, not in this dictionary.
         # ─────────────────────────────────────────────────────────────────
+        #### Template bare-metal profile ####
         _template-bare-metal =
           sharedDesktopProfile
           // {
@@ -137,15 +138,7 @@
             extraHomeImports = [./modules/home/gaming.nix];
           };
 
-        nixos-vm =
-          sharedDesktopProfile
-          // {
-            hostname = "nixos-vm";
-            hypervisor = "qemu";
-            impermanence = true;
-            extraHomeImports = [./modules/home/gaming.nix];
-          };
-
+        #### Bare-metal profiles ####
         nixos-desktop =
           sharedDesktopProfile
           // {
@@ -153,6 +146,16 @@
             hypervisor = "none";
             extraHomeImports = [./modules/home/gaming.nix];
             impermanence = true;
+          };
+
+        #### VM's & WSL's ####
+        nixos-vm =
+          sharedDesktopProfile
+          // {
+            hostname = "nixos-vm";
+            hypervisor = "qemu";
+            impermanence = true;
+            extraHomeImports = [./modules/home/gaming.nix];
           };
 
         nixos-vm-headless = {
