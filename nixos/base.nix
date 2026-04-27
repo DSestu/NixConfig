@@ -69,9 +69,15 @@
     shell = pkgs.fish;
   };
 
+  # Use fish for root too. Tradeoff: fish isn't POSIX, so any script that
+  # invokes `sh -c '...'` is unaffected (sh stays dash/bash via the
+  # platform default), but interactive root sessions (`sudo -i`,
+  # `sudo su -`) get the Tide-themed fish defined in
+  # modules/common/fish.nix instead of bash. Single-shot `sudo <cmd>`
+  # invocations don't spawn a shell at all, so they're untouched.
+  users.users.root.shell = pkgs.fish;
+
   services.openssh.enable = true;
-  # System-wide fish shell
-  programs.fish.enable = true;
 
   nix.settings = {
     experimental-features = ["nix-command" "flakes"];
