@@ -11,7 +11,7 @@
     nerd-fonts.meslo-lg
   ];
 
-  xdg.configFile."fish/conf.d/tide-theme.fish".source = ./tide-theme.fish;
+  xdg.configFile."fish/conf.d/tide-theme.fish".source = ./fish_config/tide-theme.fish;
 
   programs.fish = {
     enable = true;
