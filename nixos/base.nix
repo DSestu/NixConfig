@@ -1,3 +1,6 @@
+# System-wide persistence configuration
+# This file is used to configure the persistence whitelist of the system
+# This is used in par with /modules/persistence.nix to configure the persistence whitelist of the home directory (user-wide persistence)
 {
   config,
   lib,

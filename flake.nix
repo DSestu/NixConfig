@@ -53,10 +53,13 @@
       # of `nixos/disko/single-disk-{uefi,bios}.nix` from its host folder
       # — see readme → "Remote install/reprovision (nixos-anywhere)").
       commonNixosModules = [
+        # The profile-options module is used to configure the impermanence and disko modules for each profile
         ./nixos/modules/profile-options.nix
         ./nixos/base.nix
         impermanence.nixosModules.impermanence
         home-manager.nixosModules.home-manager
+        # The disko opt-in module is inert unless a profile sets `disko.devices` (typically by importing one of `nixos/disko/single-disk-{uefi,bios}.nix` from its host folder — see readme → "Remote install/reprovision (nixos-anywhere)")
+        # See the template bare-metal profile for an example of how to use it.
         disko.nixosModules.default
       ];
       commonHomeImports = [
@@ -72,6 +75,43 @@
 
       # Profile dictionary: add/remove modules per target here.
       profiles = {
+        # ─────────────────────────────────────────────────────────────────
+        # TEMPLATE — DO NOT EDIT, DO NOT DEPLOY.
+        #
+        # `_template-bare-metal` is the canonical starting point for any
+        # new bare-metal profile. The leading underscore signals "skeleton
+        # only" — never `nixos-rebuild` or `nixos-anywhere` against it
+        # directly. Instead, copy this entry to a new key (e.g. `my-laptop`),
+        # copy `nixos/hosts/_template-bare-metal/` to `nixos/hosts/my-laptop/`,
+        # then customize the copy.
+        #
+        # What's enabled here:
+        #   - `sharedDesktopProfile` → graphics on, KDE Plasma stack
+        #     (via `extraNixosModules = [./modules/kde-suite.nix]`).
+        #   - `hypervisor = "none"`  → no VM platform module; disko owns
+        #                              partitions and the bootloader
+        #                              (see the matching host folder).
+        #   - `impermanence = true`  → wipe-root on every boot, persist
+        #                              only what's listed in
+        #                              `nixos/base.nix` (system) and
+        #                              `modules/persistence.nix` (home).
+        #   - gaming home module     → Steam, GDLauncher, etc. for the user.
+        #
+        # The matching `nixos/hosts/_template-bare-metal/default.nix`
+        # imports the disko UEFI layout. Bootloader/disk/hardware tweaks
+        # belong there, not in this dictionary.
+        # ─────────────────────────────────────────────────────────────────
+        _template-bare-metal =
+          sharedDesktopProfile
+          // {
+            # Placeholder hostname. The flake still evaluates with this
+            # value, but you must rename when you copy this entry.
+            hostname = "REPLACE-ME";
+            hypervisor = "none";
+            impermanence = true;
+            extraHomeImports = [./modules/gaming.nix];
+          };
+
         nixos-vm =
           sharedDesktopProfile
           // {
@@ -91,6 +131,7 @@
           };
 
         nixos-vm-headless = {
+          # Here the absence of sharedDesktopProfile means that the profile is not a desktop profile (because of the graphics = false and absence of kde-suite.nix module)
           hostname = "nixos-vm-headless";
           hypervisor = "qemu";
           graphics = false;
@@ -144,11 +185,13 @@
             backupFileExtension = "bak";
             users.david.imports =
               commonHomeImports
+              # if dictionary impermanence is true, then import the persistence.nix module
               ++ (lib.optional cfg.impermanence ./modules/persistence.nix)
               ++ cfg.extraHomeImports;
           };
         };
 
+        # Extra modules for the hypervisor platform (qemu, virtualbox, wsl)
         hypervisorModules =
           if cfg.hypervisor == "qemu"
           then [

@@ -650,22 +650,27 @@ Both are designed to coexist with the impermanence wipe-root pattern
 (impermanence's persisted-paths source) survive every boot. No
 subvolumes, no swap, no LVM — same shape as the OVA/QEMU layouts.
 
-To install a profile onto a target, import the right disko file from
-that profile's host folder. Example for a hypothetical bare-metal
-desktop:
+To install a profile onto a target, you don't write the host folder
+from scratch — copy the template instead:
 
-```nix
-# nixos/hosts/my-desktop/default.nix
-{...}: {
-  imports = [../../disko/single-disk-uefi.nix];
-  # Uncomment if the target's disk isn't /dev/sda:
-  # disko.devices.disk.main.device = "/dev/nvme0n1";
-}
+```bash
+cp -r nixos/hosts/_template-bare-metal nixos/hosts/<your-host>
 ```
 
-That's the full wiring: flake input + commonNixosModules entry are
-already in place, so a single `imports = [...]` line in the host folder
-is the entire opt-in.
+Then copy the matching `_template-bare-metal` block in `flake.nix`
+(tagged `TEMPLATE — DO NOT EDIT, DO NOT DEPLOY`) to a new key with the
+same name as your folder, and set `hostname = "<your-host>"`. Tweak the
+copied `default.nix` to switch UEFI ↔ BIOS, override the disk device,
+or add host-specific bootloader/kernel/hardware tweaks. The leading
+underscore on the template signals "skeleton only — never deploy this
+key directly"; leave the template files untouched so they stay a clean
+reference.
+
+The copied `default.nix` already includes a `pathExists` guard for
+`hardware-configuration.nix`, so the flake evaluates fine before the
+hardware config exists. `nixos-anywhere` generates that file for you in
+step 5 below, the guard flips, and both files are imported on
+subsequent rebuilds.
 
 Note for `nixos-vbox`: the existing OVA-targeting profile gets its
 `fileSystems` from `nixos/platforms/vm-virtualbox.nix` and would clash
@@ -838,6 +843,8 @@ Layout:
 
 ```text
 nixos/hosts/
+  _template-bare-metal/      # SKELETON — copy, don't edit. See below.
+    default.nix
   nixos-desktop/
     default.nix              # auto-imported for `nixos-desktop`
     hardware-configuration.nix  # generated on the target, see below
@@ -845,6 +852,19 @@ nixos/hosts/
 
 VM profiles don't need a host folder — their bootloader/filesystems come
 from `nixos/platforms/vm-qemu.nix` or `nixos/platforms/vm-virtualbox.nix`.
+
+### Starting from the bare-metal template
+
+`nixos/hosts/_template-bare-metal/` (paired with the `_template-bare-metal`
+entry in `flake.nix`) is the canonical starting point for any new
+bare-metal profile. The leading underscore signals "skeleton only —
+never deploy this key directly". Both the host folder and the flake
+entry carry header comments explaining what's wired in (KDE, gaming,
+impermanence, disko UEFI layout, hardware-config `pathExists` guard) and
+the customization points (UEFI ↔ BIOS layout, disk device override,
+where to add per-host kernel/bootloader tweaks). Copy both — directory
+and flake entry — to a new name and customize the copy; leave the
+template files alone so they stay a clean reference.
 
 ### Bare-metal: generating `hardware-configuration.nix`
 

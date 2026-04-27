@@ -1,3 +1,6 @@
+# Home-wide persistence configuration
+# This file is used to configure the persistence whitelist of the user's home directory
+# This is used in par with /nixos/base.nix to configure the persistence whitelist of the root directory (system-wide persistence)
 {
   config,
   lib,
