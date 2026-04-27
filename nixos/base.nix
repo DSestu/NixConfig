@@ -9,9 +9,10 @@
 }: {
   nixpkgs.config.allowUnfree = true;
 
+  # System-wide tools
   imports = [
-    ../modules/common.nix
-    ../modules/network.nix
+    # ../modules/common.nix
+    # ../modules/network.nix
   ];
 
   # Impermanence: `/` is wiped on every boot by the platform-level wipe-root
