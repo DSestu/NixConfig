@@ -17,6 +17,8 @@
         directory = ".gnupg";
         mode = "0700";
       }
+      "nixconfig"
+
       ".config/gh"
       ".config/git"
 

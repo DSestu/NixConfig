@@ -40,6 +40,54 @@ Nix re-realises the path on the next build.
 nix run github:nix-community/plasma-manager
 ```
 
+### Reload Plasma after a rebuild
+
+After `nixos-rebuild switch` writes new Plasma config (panels, shortcuts,
+KWin rules, KDED daemons, etc.), most components only reread their files
+at startup. Pick the smallest reload that covers what you changed —
+logging out should be a last resort.
+
+**Per-subsystem (no logout):**
+
+```bash
+# KWin: window rules, shortcuts, compositor settings
+qdbus org.kde.KWin /KWin reconfigure
+
+# Plasma shell: panels, widgets, applets
+systemctl --user restart plasma-plasmashell.service
+# Old-school equivalent if the unit is missing:
+kquitapp6 plasmashell ; kstart plasmashell
+
+# KDED daemons (notifications, power, kscreen, …)
+kquitapp6 kded6 ; kded6 &
+
+# Service menus / .desktop entries
+kbuildsycoca6 --noincremental
+
+# Global keybindings only
+qdbus org.kde.kglobalaccel /kglobalaccel \
+  org.kde.KGlobalAccel.reloadConfig
+```
+
+**Covers ~90% of edits:**
+
+```bash
+qdbus org.kde.KWin /KWin reconfigure
+systemctl --user restart plasma-plasmashell.service
+```
+
+**Full reset:** log out and back in. Required for changes to display
+managers, autostart entries, session env vars, or
+`~/.config/plasma-localerc`.
+
+**Change isn't taking effect at all?** Home Manager honors
+`backupFileExtension = "bak"` (set in `flake.nix`), so a pre-existing
+config gets renamed instead of overwritten. If you see
+`~/.config/plasmashellrc.bak` next to a stale `plasmashellrc`, HM
+created the bak on the *first* deploy and has been refusing to clobber
+the live file since. Delete the live file and re-run
+`nixos-rebuild switch`.
+
 ### Refresh AppImage hash
 
 Compute latest SRI hash:

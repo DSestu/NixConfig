@@ -75,7 +75,17 @@
   # `sudo su -`) get the Tide-themed fish defined in
   # modules/common/fish.nix instead of bash. Single-shot `sudo <cmd>`
   # invocations don't spawn a shell at all, so they're untouched.
-  users.users.root.shell = pkgs.fish;
+  #
+  # `initialPassword` is the escape hatch: NixOS ships with `root` locked
+  # by default, so a failed boot drops to emergency mode where nobody can
+  # log in. Seeding a password lets you actually use the rescue shell.
+  # `users.mutableUsers = true` (the NixOS default) plus the persisted
+  # `/etc/shadow` entry in `environment.persistence` below means that any
+  # `passwd` change the user makes survives wipe-root.
+  users.users.root = {
+    shell = pkgs.fish;
+    initialPassword = "nixos";
+  };
 
   services.openssh.enable = true;
 

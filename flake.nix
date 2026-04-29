@@ -76,6 +76,11 @@
       commonNixosModules = [
         ./nixos/modules/profile-options.nix
         ./nixos/base.nix
+        # Wipe-root initrd service — gated by `profiles.impermanence.enable`,
+        # so it's a no-op on profiles that don't opt in. Lives here (not in a
+        # platform module) so disko-based bare-metal profiles get it without
+        # per-host wiring.
+        ./nixos/modules/impermanence-wipe.nix
         ./modules/common/fish.nix
         impermanence.nixosModules.impermanence
         home-manager.nixosModules.home-manager
@@ -167,11 +172,20 @@
           impermanence = true;
         };
 
+        # Installed into a VirtualBox VM via `nixos-anywhere` from a live ISO,
+        # not built as an OVA. That makes it a bare-metal-style profile
+        # (`hypervisor = "none"` → no platform module) where the host folder
+        # imports a disko layout and a hardware-configuration.nix, exactly
+        # like `_template-bare-metal`. The "OVA build" path
+        # (`hypervisor = "virtualbox"` → `vm-virtualbox.nix` →
+        # `virtualbox-image.nix`) declares `fileSystems."/"` itself and
+        # would collide with disko — see CONTRIBUTING.md "Where to look first
+        # when something breaks".
         nixos-vbox =
           sharedDesktopProfile
           // {
             hostname = "nixos-vbox";
-            hypervisor = "virtualbox";
+            hypervisor = "none";
             impermanence = true;
           };
 
@@ -226,7 +240,14 @@
               # 2. Common HM baseline.
               commonHomeImports
               # 4. Impermanence: auto-add the user-side persistence map.
-              ++ (lib.optional cfg.impermanence ./modules/home/persistence.nix)
+              # The HM module from the impermanence flake has to come along
+              # too — without it `home.persistence` is silently accepted by
+              # home-manager's freeform option type and produces no
+              # symlinks/binds, so e.g. fish_history evaporates on reboot.
+              ++ (lib.optionals cfg.impermanence [
+                impermanence.homeManagerModules.impermanence
+                ./modules/home/persistence.nix
+              ])
               # 3. Host-folder HM module (if home.nix exists).
               ++ hostHomeImports
               # 5. Per-profile HM extras.

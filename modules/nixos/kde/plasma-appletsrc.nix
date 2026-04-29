@@ -2,10 +2,13 @@
   programs.plasma.panels = [
     {
       location = "bottom";
+      hiding = "dodgewindows";
+      floating = true;
+
       widgets = [
         {
           kickoff = {
-            icon = "kali-panel-menu-large";
+            icon = "nix-snowflake";
           };
         }
         "org.kde.plasma.pager"
