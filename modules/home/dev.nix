@@ -12,6 +12,7 @@
     tig # git show | tig
     gh
     tableplus
+    nodejs
   ];
 
   programs.git = {

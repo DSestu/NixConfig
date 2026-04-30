@@ -240,12 +240,13 @@
               # 2. Common HM baseline.
               commonHomeImports
               # 4. Impermanence: auto-add the user-side persistence map.
-              # The HM module from the impermanence flake has to come along
-              # too — without it `home.persistence` is silently accepted by
-              # home-manager's freeform option type and produces no
-              # symlinks/binds, so e.g. fish_history evaporates on reboot.
+              # The HM module is auto-imported by the NixOS module
+              # (`impermanence.nixosModules.impermanence` in
+              # `commonNixosModules`), so we only add the persistence map
+              # itself here. Manually importing
+              # `impermanence.homeManagerModules.impermanence` now triggers
+              # a deprecation assertion.
               ++ (lib.optionals cfg.impermanence [
-                impermanence.homeManagerModules.impermanence
                 ./modules/home/persistence.nix
               ])
               # 3. Host-folder HM module (if home.nix exists).
