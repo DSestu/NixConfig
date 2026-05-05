@@ -19,6 +19,10 @@
       url = "github:nix-community/disko";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    nixgl = {
+      url = "github:nix-community/nixGL";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = {
@@ -28,6 +32,7 @@
     impermanence,
     nixos-wsl,
     disko,
+    nixgl,
     ...
   }: let
     system = "x86_64-linux";
@@ -39,6 +44,8 @@
   in {
     homeConfigurations."david" = home-manager.lib.homeManagerConfiguration {
       inherit pkgs;
+
+      extraSpecialArgs = {inherit nixgl;};
 
       modules = [
         ./home.nix

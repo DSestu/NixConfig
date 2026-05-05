@@ -92,6 +92,15 @@ in {
         unitConfig.DefaultDependencies = "no";
         serviceConfig = {
           Type = "oneshot";
+          # Without RemainAfterExit, a Type=oneshot unit goes "inactive
+          # (dead)" the moment ExecStart returns. `initrd-root-fs.target`
+          # is re-activated late in initrd as part of the switch-root
+          # transition, and because we're `requiredBy` it, systemd
+          # *re-runs* the unit — wiping the work `initrd-nixos-activation`
+          # just did and leaving /sysroot without a usable init. With
+          # RemainAfterExit=true the unit stays "active" after exit, so
+          # later activation requests are no-ops.
+          RemainAfterExit = true;
           ExecStart = "${wipeScript}";
         };
       };

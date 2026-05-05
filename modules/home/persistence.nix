@@ -43,8 +43,8 @@
 
       # --- Game launchers ---
       ".local/share/Steam"
-      ".config/gdlauncher_next"
-      ".local/share/gdlauncher_next"
+      ".config/gdlauncher_carbon"
+      ".local/share/gdlauncher_carbon"
 
       # --- IDE settings (not caches/indexes) ---
       ".config/Code/User"

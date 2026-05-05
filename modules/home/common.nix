@@ -7,6 +7,7 @@
   commonPackages = with pkgs; [
     google-chrome
     brave
+    remmina
   ];
 in {
   config = lib.mkMerge [
