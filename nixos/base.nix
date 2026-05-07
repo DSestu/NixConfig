@@ -16,8 +16,6 @@
 }: {
   nixpkgs.config.allowUnfree = true;
 
-  imports = [];
-
   # Impermanence: `/` is wiped on every boot by the platform-level wipe-root
   # service, so anything we want to survive a reboot has to be listed here.
   # `environment.persistence` bind-mounts these paths from /nix/persist back
@@ -151,6 +149,16 @@
   services.displayManager.autoLogin = {
     enable = true;
     user = "david";
+  };
+
+  # nix-ld: compatibility shim so FHS binaries (VS Code/Cursor extensions,
+  # prebuilt .node addons like DuckDB) can dlopen standard libs such as
+  # libstdc++.so.6 that don't exist at /usr/lib on NixOS.
+  programs.nix-ld = {
+    enable = true;
+    libraries = with pkgs; [
+      stdenv.cc.cc.lib # libstdc++, libgcc_s
+    ];
   };
 
   environment.systemPackages = [];

@@ -9,8 +9,6 @@
 
   ];
 
-  networking.hostName = lib.mkForce "nixos-vbox";
-
   # Use GRUB in EFI mode on this VM. `efiInstallAsRemovable` writes GRUB
   # to the EFI fallback path (`/EFI/BOOT/BOOTX64.EFI`), which makes it
   # the default boot entry without touching EFI variables (works well

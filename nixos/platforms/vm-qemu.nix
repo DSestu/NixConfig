@@ -1,8 +1,4 @@
 {...}: {
-  imports = [
-    ../modules/impermanence-wipe.nix
-  ];
-
   # Placeholder bootloader/fs — overridden by qemu-vm wrapper from build-vm.
   boot.loader.grub = {
     enable = true;

@@ -76,7 +76,6 @@
       #  per-profile config without touching this file, drop a default.nix
       #  (NixOS) or home.nix (HM) into nixos/hosts/<name>/.
       # ═══════════════════════════════════════════════════════════════════
-
       # ─── 1. NixOS baseline (system-wide, every profile) ──────────────
       # `disko.nixosModules.default` is loaded but inert until a host
       # folder imports one of `nixos/disko/single-disk-{uefi,bios}.nix`.
@@ -263,7 +262,6 @@
           };
         };
 
-
         ########### HYPERVISOR MODULES / SYSTEM CONFIGURATION ###########
         # ── 5. Platform module (selected by `hypervisor`) ─────────────
         # Owns root FS, bootloader, and any platform-specific quirks.
@@ -288,7 +286,7 @@
           ]
           else [];
       in
-        nixpkgs.lib.nixosSystem {
+        lib.nixosSystem {
           inherit system;
           specialArgs = {inherit plasma-manager;};
           modules =

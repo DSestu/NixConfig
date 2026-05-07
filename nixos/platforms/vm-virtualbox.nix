@@ -1,7 +1,6 @@
 {modulesPath, ...}: {
   imports = [
     (modulesPath + "/virtualisation/virtualbox-image.nix")
-    ../modules/impermanence-wipe.nix
   ];
 
   virtualisation.virtualbox.guest.enable = true;
