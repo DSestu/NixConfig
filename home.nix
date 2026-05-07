@@ -23,10 +23,6 @@
   # Without this on GTK_PATH, apps log "Failed to load module …" (common on Nix-on-non-NixOS).
   home.sessionSearchVariables = {
     GTK_PATH = ["${pkgs.kdePackages.kde-gtk-config}/lib/gtk-3.0"];
-    # Cursor/VS Code extensions load prebuilt .node addons via dlopen. On
-    # non-NixOS, these binaries expect libstdc++.so.6 at FHS paths that
-    # don't exist. Adding the nix store path here makes it discoverable.
-    LD_LIBRARY_PATH = ["${pkgs.stdenv.cc.cc.lib}/lib"];
   };
 
   programs.home-manager.enable = true;

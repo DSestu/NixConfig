@@ -40,6 +40,23 @@
     pkgs = import nixpkgs {
       inherit system;
       config.allowUnfree = true;
+      overlays = [
+        (final: prev: {
+          # code-cursor's wrapper does not include libstdc++, so prebuilt
+          # .node addons (e.g. DuckDB) that dlopen it via Cursor's nix-store
+          # glibc linker fail. Adding it here injects the path into the
+          # wrapper so every Cursor launch has it regardless of how it's started.
+          code-cursor = prev.code-cursor.overrideAttrs (old: {
+            nativeBuildInputs = (old.nativeBuildInputs or []) ++ [prev.makeWrapper];
+            postFixup =
+              (old.postFixup or "")
+              + ''
+                wrapProgram $out/bin/cursor \
+                  --prefix LD_LIBRARY_PATH : "${prev.stdenv.cc.cc.lib}/lib"
+              '';
+          });
+        })
+      ];
     };
   in {
     homeConfigurations."david" = home-manager.lib.homeManagerConfiguration {
