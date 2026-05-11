@@ -27,6 +27,10 @@
       })
     else pkgs.warp-terminal;
 in {
+  imports = [
+    ./dev/claude-code.nix
+  ];
+
   home.packages = with pkgs;
     [
       devenv

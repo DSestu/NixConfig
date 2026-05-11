@@ -49,8 +49,16 @@
       # --- IDE settings (not caches/indexes) ---
       ".config/Code/User"
       ".config/Cursor/User"
+
+      # --- Claude Code (auth, settings, plugins, MCP, skills, history) ---
+      {
+        directory = ".claude";
+        mode = "0700";
+      }
     ];
 
-    files = [];
+    files = [
+      ".claude.json"
+    ];
   };
 }
