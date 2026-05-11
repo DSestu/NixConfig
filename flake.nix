@@ -99,11 +99,6 @@
       commonNixosModules = [
         ./nixos/modules/profile-options.nix
         ./nixos/base.nix
-        # Wipe-root initrd service — gated by `profiles.impermanence.enable`,
-        # so it's a no-op on profiles that don't opt in. Lives here (not in a
-        # platform module) so disko-based bare-metal profiles get it without
-        # per-host wiring.
-        ./nixos/modules/impermanence-wipe.nix
         ./modules/common/fish.nix
         impermanence.nixosModules.impermanence
         home-manager.nixosModules.home-manager

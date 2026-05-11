@@ -4,22 +4,21 @@
     enable = true;
     device = "/dev/vda";
   };
+
+  # Impermanence via tmpfs root: `/` is a fresh tmpfs every boot, no wipe
+  # service required. The qcow2 disk holds `/nix` (Nix store + persisted
+  # state under `/nix/persist`); impermanence bind-mounts paths from
+  # `/nix/persist` back into the tmpfs root.
   fileSystems."/" = {
+    device = "none";
+    fsType = "tmpfs";
+    options = ["defaults" "size=2G" "mode=755"];
+  };
+  fileSystems."/nix" = {
     device = "/dev/disk/by-label/nixos";
     fsType = "ext4";
+    neededForBoot = true;
   };
-
-  # `wipe-root` from `../modules/impermanence-wipe.nix` walks `/sysroot/*`
-  # and `rm -rf`s anything not in `profiles.impermanence.preserveDirs`.
-  # CRITICAL: 9p shared directories from the host are mounted under `/mnt`
-  # by the time this runs — `rm -rf` would cross the mount and destroy
-  # files on the host filesystem. `/var` is preserved for the qemu vmVariant
-  # runtime state. `/run` must be preserved too: the qemu-vm wrapper schedules
-  # a tmpfs at `/sysroot/run` in initrd, but its mount can race wipe-root —
-  # if wipe-root sees the directory before the mount completes, `mountpoint
-  # -q` returns false, the dir is removed, and the pending mount then fails
-  # with "Failed to mount /sysroot/run" → emergency mode.
-  profiles.impermanence.preserveDirs = ["nix" "boot" "mnt" "tmp" "var" "run"];
 
   systemd.tmpfiles.rules = [
     # Full flake lives on the host via VirtFS; link so `--flake /etc/nixos#...` works.
@@ -42,6 +41,13 @@
 
   virtualisation.vmVariant = {
     virtualisation = {
+      # Stop the qemu vmVariant from injecting its own
+      # `fileSystems."/" = ext4 disk` via `mkVMOverride` (priority 10),
+      # which beats both `mkForce` (50) and even `mkOverride 9`. With
+      # this off, the `fileSystems` declared above (tmpfs `/`, ext4
+      # `/nix`) are the source of truth and the qcow2 disk is mounted
+      # at `/nix` instead of `/`.
+      useDefaultFilesystems = false;
       memorySize = 8192;
       cores = 8;
       # GTK UI is the reliable default on Linux.

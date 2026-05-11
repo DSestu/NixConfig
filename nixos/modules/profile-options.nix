@@ -3,18 +3,15 @@
     enable = lib.mkOption {
       type = lib.types.bool;
       default = false;
-      description = "Enable impermanence persistence wiring for this profile.";
-    };
-
-    preserveDirs = lib.mkOption {
-      type = lib.types.listOf lib.types.str;
-      default = ["nix" "boot" "tmp"];
       description = ''
-        Top-level directories under `/` that survive the initrd
-        `wipe-root` service on every boot. `nix` and `boot` are
-        required (Nix store + bootloader); platform modules append
-        their own (e.g. `vm-qemu` adds `mnt` for 9p shares and
-        `var` for the QEMU runtime).
+        Enable impermanence persistence wiring for this profile. The
+        actual mechanism is tmpfs root + a persistent `/nix/persist`
+        directory on disk, set up per-platform (see
+        `nixos/platforms/vm-qemu.nix`, `nixos/platforms/vm-virtualbox.nix`,
+        and the disko layouts in `nixos/disko/`). When enabled, this
+        flag also gates `environment.persistence` in `nixos/base.nix`
+        and auto-imports `modules/home/persistence.nix` on the
+        Home Manager side (see `mkProfile` in `flake.nix`).
       '';
     };
   };
