@@ -1,24 +1,38 @@
-{...}: {
+{
+  config,
+  pkgs,
+  ...
+}: {
   # Placeholder bootloader/fs — overridden by qemu-vm wrapper from build-vm.
   boot.loader.grub = {
     enable = true;
     device = "/dev/vda";
   };
 
-  # Impermanence via tmpfs root: `/` is a fresh tmpfs every boot, no wipe
-  # service required. The qcow2 disk holds `/nix` (Nix store + persisted
-  # state under `/nix/persist`); impermanence bind-mounts paths from
-  # `/nix/persist` back into the tmpfs root.
-  fileSystems."/" = {
-    device = "none";
-    fsType = "tmpfs";
-    options = ["defaults" "size=2G" "mode=755"];
-  };
-  fileSystems."/nix" = {
-    device = "/dev/disk/by-label/nixos";
-    fsType = "ext4";
-    neededForBoot = true;
-  };
+  # Bootstrap boot-critical paths in the tmpfs root.
+  #
+  # With stage1 systemd + tmpfs `/`, `initrd-nixos-activation` chroots into
+  # `/sysroot` and runs the activation script, then `initrd-switch-root`
+  # runs `systemctl switch-root /sysroot ""`. Two checks then fire in the
+  # new root that an empty tmpfs fails:
+  #
+  #   1. `switch-root` with empty next-init falls back to `/sbin/init` —
+  #      a fresh tmpfs has none. Fails with "no usable init".
+  #   2. systemd 258+ refuses to start when `/usr/` is empty (merged-usr
+  #      detection). Even with NixOS' `usrbinenv` activation creating
+  #      `/usr/bin/env`, the order can leave `/usr` empty at the moment
+  #      systemd inspects it. Fails with "Refusing to run in unsupported
+  #      environment where /usr/ is not populated".
+  #
+  # On disk-backed NixOS roots these paths survive from the first install,
+  # so nothing in upstream creates them eagerly. Seed them here so a
+  # freshly-tmpfs'd root passes both checks.
+  system.activationScripts.bootstrapTmpfsRoot.text = ''
+    install -m 0755 -d /sbin /usr/bin /usr/lib
+    ln -sfn ${config.systemd.package}/lib/systemd/systemd /sbin/init
+    ln -sfn ${pkgs.coreutils}/bin/env /usr/bin/env
+    ln -sfn /etc/os-release /usr/lib/os-release
+  '';
 
   systemd.tmpfiles.rules = [
     # Full flake lives on the host via VirtFS; link so `--flake /etc/nixos#...` works.
@@ -48,6 +62,22 @@
       # `/nix`) are the source of truth and the qcow2 disk is mounted
       # at `/nix` instead of `/`.
       useDefaultFilesystems = false;
+      # qemu-vm.nix reads `virtualisation.fileSystems` and `mkVMOverride`s
+      # them into the VM's actual `fileSystems`. Declaring top-level
+      # `fileSystems` here does NOT propagate into the vmVariant when
+      # `useDefaultFilesystems = false`, so put the root + /nix here.
+      fileSystems = {
+        "/" = {
+          device = "none";
+          fsType = "tmpfs";
+          options = ["defaults" "size=2G" "mode=755"];
+        };
+        "/nix" = {
+          device = "/dev/disk/by-label/nixos";
+          fsType = "ext4";
+          neededForBoot = true;
+        };
+      };
       memorySize = 8192;
       cores = 8;
       # GTK UI is the reliable default on Linux.
