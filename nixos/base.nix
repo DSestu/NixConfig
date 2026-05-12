@@ -161,6 +161,15 @@
   };
 
   services.openssh.enable = true;
+  # SSH posture is enforced at the baseline. Network access is
+  # key-only and root is never allowed via SSH — local console + sudo
+  # are the only ways into the root account. Any profile that needs
+  # to override these has to argue for it; the default does not bend.
+  services.openssh.settings = {
+    PermitRootLogin = "no";
+    PasswordAuthentication = false;
+    KbdInteractiveAuthentication = false;
+  };
 
   nix.settings = {
     experimental-features = ["nix-command" "flakes"];
