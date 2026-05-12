@@ -210,6 +210,19 @@
             impermanence = false;
           };
 
+        # Test target for the bare-metal wipe-root + btrfs path. Same
+        # composition as `nixos-desktop` (hypervisor = "none" → loads
+        # wipe-root.nix + disko btrfs layout) but the host folder
+        # forces /dev/vda and adds a boot-time canary that reports
+        # the wipe state to the journal. See
+        # `scripts/run-vm-bare-test.sh` for the build + boot harness.
+        nixos-vm-bare-test = {
+          hostname = "nixos-vm-bare-test";
+          hypervisor = "none";
+          impermanence = true;
+          graphics = false;
+        };
+
         nixos-wsl = {
           hostname = "nixos-wsl";
           hypervisor = "wsl";
