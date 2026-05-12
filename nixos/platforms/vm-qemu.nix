@@ -34,6 +34,39 @@
     ln -sfn /etc/os-release /usr/lib/os-release
   '';
 
+  # Restore /run/{current,booted}-system early in stage2. The initrd
+  # activation creates these in the bind-mounted /sysroot/run, but
+  # systemd's switch-root may not preserve them across the pivot — and
+  # without them, user shells (set to `/run/current-system/sw/bin/fish`
+  # by `utils.toShellPath`) fail with ENOENT at login.
+  #
+  # We read the closure path from the kernel command line (`init=…/init`)
+  # rather than `config.system.build.toplevel` — referencing toplevel
+  # from a service that's part of toplevel triggers infinite recursion.
+  systemd.services.bootstrap-current-system = {
+    description = "Re-create /run/{current,booted}-system after switch-root";
+    wantedBy = ["sysinit.target"];
+    before = ["sysinit.target" "local-fs.target"];
+    unitConfig.DefaultDependencies = false;
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = pkgs.writeShellScript "bootstrap-current-system" ''
+        set -euo pipefail
+        for arg in $(< /proc/cmdline); do
+          case "$arg" in
+            init=*)
+              closure="$(${pkgs.coreutils}/bin/dirname "''${arg#init=}")"
+              ${pkgs.coreutils}/bin/ln -sfn "$closure" /run/current-system
+              ${pkgs.coreutils}/bin/ln -sfn "$closure" /run/booted-system
+              exit 0
+              ;;
+          esac
+        done
+      '';
+    };
+  };
+
   systemd.tmpfiles.rules = [
     # Full flake lives on the host via VirtFS; link so `--flake /etc/nixos#...` works.
     "L+ /etc/nixos - - - - /mnt/hmconfig"

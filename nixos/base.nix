@@ -87,20 +87,48 @@
     deps = ["users"];
   };
 
+  # Trigger a snapshot of /etc/shadow → /nix/persist whenever /etc/shadow
+  # changes. `PathModified` is important: `passwd` writes a temp file and
+  # atomically renames it over /etc/shadow; `PathChanged` (CLOSE_WRITE on
+  # the original inode) does not reliably observe this because the
+  # watched inode is unlinked by the rename.
   systemd.paths.persist-etc-shadow = lib.mkIf config.profiles.impermanence.enable {
-    description = "Watch /etc/shadow for changes and persist them";
+    description = "Watch /etc/shadow for changes and trigger persist";
     wantedBy = ["multi-user.target"];
     pathConfig = {
-      PathChanged = "/etc/shadow";
+      PathModified = "/etc/shadow";
       Unit = "persist-etc-shadow.service";
     };
   };
 
+  # Snapshot service triggered by the path unit on every change. Must NOT
+  # use `RemainAfterExit` — that would leave the service in `active
+  # (exited)` after the first run, and subsequent path-unit triggers
+  # would be no-ops (systemd skips activations of already-active units),
+  # so the very first `passwd` after boot wouldn't be persisted.
   systemd.services.persist-etc-shadow = lib.mkIf config.profiles.impermanence.enable {
-    description = "Copy /etc/shadow to /nix/persist on change";
+    description = "Copy /etc/shadow to /nix/persist";
     serviceConfig = {
       Type = "oneshot";
       ExecStart = "${pkgs.coreutils}/bin/install -D -m 0640 -o root -g shadow /etc/shadow /nix/persist/etc/shadow";
+    };
+  };
+
+  # Safety net: also snapshot at shutdown, so a `passwd` change immediately
+  # followed by `reboot` (before inotify quiesces) still lands on disk.
+  # Separate unit so it can use `RemainAfterExit` for the
+  # `ExecStop`-on-shutdown pattern without breaking the change-driven
+  # service above.
+  systemd.services.persist-etc-shadow-shutdown = lib.mkIf config.profiles.impermanence.enable {
+    description = "Snapshot /etc/shadow to /nix/persist at shutdown";
+    wantedBy = ["multi-user.target"];
+    before = ["shutdown.target"];
+    conflicts = ["shutdown.target"];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = "${pkgs.coreutils}/bin/true";
+      ExecStop = "${pkgs.coreutils}/bin/install -D -m 0640 -o root -g shadow /etc/shadow /nix/persist/etc/shadow";
     };
   };
 
