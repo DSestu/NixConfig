@@ -18,6 +18,7 @@
     yazi
     micro
     fzf
+    fd
     nerd-fonts.meslo-lg
   ];
 
@@ -26,10 +27,12 @@
   # NixOS via `environment.systemPackages = ... fishPluginPackages`.
   fishPluginNames = ["tide" "fzf-fish" "z"];
   fishPluginPackages = map (n: pkgs.fishPlugins.${n}) fishPluginNames;
-  fishPluginList = map (n: {
-    name = n;
-    src = pkgs.fishPlugins.${n}.src;
-  }) fishPluginNames;
+  fishPluginList =
+    map (n: {
+      name = n;
+      src = pkgs.fishPlugins.${n}.src;
+    })
+    fishPluginNames;
 
   commonShellAliases = {
     l = "eza -Bhm --icons --no-user --git --time-style long-iso --group-directories-first --color=always --color-scale=age -F --no-permissions -s extension --git-ignore";

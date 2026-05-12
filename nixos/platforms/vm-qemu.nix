@@ -1,5 +1,6 @@
 {
   config,
+  lib,
   pkgs,
   ...
 }: {
@@ -10,6 +11,9 @@
   };
 
   # Bootstrap boot-critical paths in the tmpfs root.
+  #
+  # Only needed when impermanence is enabled (tmpfs `/`). On a normal
+  # disk-backed root these paths survive from the first install.
   #
   # With stage1 systemd + tmpfs `/`, `initrd-nixos-activation` chroots into
   # `/sysroot` and runs the activation script, then `initrd-switch-root`
@@ -24,26 +28,25 @@
   #      systemd inspects it. Fails with "Refusing to run in unsupported
   #      environment where /usr/ is not populated".
   #
-  # On disk-backed NixOS roots these paths survive from the first install,
-  # so nothing in upstream creates them eagerly. Seed them here so a
-  # freshly-tmpfs'd root passes both checks.
-  system.activationScripts.bootstrapTmpfsRoot.text = ''
-    install -m 0755 -d /sbin /usr/bin /usr/lib
-    ln -sfn ${config.systemd.package}/lib/systemd/systemd /sbin/init
-    ln -sfn ${pkgs.coreutils}/bin/env /usr/bin/env
-    ln -sfn /etc/os-release /usr/lib/os-release
-  '';
+  # Seed them here so a freshly-tmpfs'd root passes both checks.
+  system.activationScripts.bootstrapTmpfsRoot = lib.mkIf config.profiles.impermanence.enable {
+    text = ''
+      install -m 0755 -d /sbin /usr/bin /usr/lib
+      ln -sfn ${config.systemd.package}/lib/systemd/systemd /sbin/init
+      ln -sfn ${pkgs.coreutils}/bin/env /usr/bin/env
+      ln -sfn /etc/os-release /usr/lib/os-release
+    '';
+  };
 
-  # Restore /run/{current,booted}-system early in stage2. The initrd
-  # activation creates these in the bind-mounted /sysroot/run, but
-  # systemd's switch-root may not preserve them across the pivot — and
-  # without them, user shells (set to `/run/current-system/sw/bin/fish`
-  # by `utils.toShellPath`) fail with ENOENT at login.
+  # Restore /run/{current,booted}-system early in stage2. Only needed
+  # with tmpfs root (impermanence): the initrd activation creates these
+  # in /sysroot/run, but switch-root may not preserve them across the
+  # pivot — without them, user shells fail with ENOENT at login.
   #
   # We read the closure path from the kernel command line (`init=…/init`)
   # rather than `config.system.build.toplevel` — referencing toplevel
   # from a service that's part of toplevel triggers infinite recursion.
-  systemd.services.bootstrap-current-system = {
+  systemd.services.bootstrap-current-system = lib.mkIf config.profiles.impermanence.enable {
     description = "Re-create /run/{current,booted}-system after switch-root";
     wantedBy = ["sysinit.target"];
     before = ["sysinit.target" "local-fs.target"];
@@ -88,18 +91,13 @@
 
   virtualisation.vmVariant = {
     virtualisation = {
-      # Stop the qemu vmVariant from injecting its own
-      # `fileSystems."/" = ext4 disk` via `mkVMOverride` (priority 10),
-      # which beats both `mkForce` (50) and even `mkOverride 9`. With
-      # this off, the `fileSystems` declared above (tmpfs `/`, ext4
-      # `/nix`) are the source of truth and the qcow2 disk is mounted
-      # at `/nix` instead of `/`.
-      useDefaultFilesystems = false;
-      # qemu-vm.nix reads `virtualisation.fileSystems` and `mkVMOverride`s
-      # them into the VM's actual `fileSystems`. Declaring top-level
-      # `fileSystems` here does NOT propagate into the vmVariant when
-      # `useDefaultFilesystems = false`, so put the root + /nix here.
-      fileSystems = {
+      # When impermanence is enabled, disable the qemu-vm default ext4
+      # root injection (`mkVMOverride`, priority 10, beats mkForce) and
+      # supply our own tmpfs `/` + ext4 `/nix` on the labelled qcow2.
+      # When impermanence is off, leave useDefaultFilesystems at its
+      # default (true) so qemu-vm creates a normal ext4 root disk.
+      useDefaultFilesystems = lib.mkIf config.profiles.impermanence.enable false;
+      fileSystems = lib.mkIf config.profiles.impermanence.enable {
         "/" = {
           device = "none";
           fsType = "tmpfs";
@@ -113,8 +111,14 @@
       };
       memorySize = 8192;
       cores = 8;
-      # GTK UI is the reliable default on Linux.
-      qemu.options = ["-vga virtio" "-display gtk,gl=off"];
+      # gl=on: passes 3D commands to the host GPU via virglrenderer instead
+      # of software-rendering every frame. Requires the host to expose OpenGL
+      # (virtually all desktop Linux setups do).
+      qemu.options = ["-vga virtio" "-display gtk,gl=on"];
+      # Raise 9p msize from the 16384-byte default. The nix store share
+      # (/nix/.ro-store) transfers many small files; a larger packet size
+      # cuts round-trips and measurably reduces store-read latency in the VM.
+      msize = 131072;
       forwardPorts = [
         {
           from = "host";
