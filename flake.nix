@@ -174,7 +174,7 @@
             extraHomeImports = [./modules/home/gaming.nix];
             # See _template-bare-metal note above. SPEC.md Phase 4 will
             # flip this back to true once wipe-root + btrfs subvols land.
-            impermanence = false;
+            impermanence = true;
           };
 
         #### VM's & WSL's ####
@@ -298,6 +298,15 @@
           else if cfg.hypervisor == "none"
           then []
           else throw "unknown hypervisor for profile ${name}: ${cfg.hypervisor} (expected qemu|wsl|none)";
+
+        # Bare-metal impermanence: wipe-root is a btrfs subvolume
+        # rollback in initrd, paired with the btrfs disko layout. VM
+        # profiles use tmpfs `/` via vm-qemu.nix instead and don't load
+        # this module. See nixos/modules/wipe-root.nix.
+        wipeRootModules =
+          lib.optional
+          (cfg.impermanence && cfg.hypervisor == "none")
+          ./nixos/modules/wipe-root.nix;
       in
         lib.nixosSystem {
           inherit system;
@@ -311,6 +320,8 @@
             ++ cfg.extraNixosImports
             # 2/4. Profile wiring + impermanence + HM imports.
             ++ [profileWiring]
+            # 4b. Bare-metal wipe-root (only when impermanence + none).
+            ++ wipeRootModules
             # 5. Platform module.
             ++ hypervisorModules;
         };

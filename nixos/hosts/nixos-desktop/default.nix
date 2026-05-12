@@ -3,9 +3,12 @@
   # Drop additional host-specific modules (bootloader tweaks, hardware
   # quirks, filesystems, etc.) here.
   #
-  # `hardware-configuration.nix` must be generated on the target machine
-  # via `sudo nixos-generate-config --show-hardware-config > .../hardware-configuration.nix`
-  # and committed next to this file. The import is guarded so the rest of
-  # the flake still evaluates before that file has been produced.
-  imports = lib.optional (builtins.pathExists ./hardware-configuration.nix) ./hardware-configuration.nix;
+  # The disko UEFI layout (btrfs subvols paired with `wipe-root.nix`)
+  # is imported unconditionally. `hardware-configuration.nix` must be
+  # generated on the target machine via `nixos-anywhere
+  # --generate-hardware-config`; it's imported with a `pathExists`
+  # guard so the flake still evaluates before that file is produced.
+  imports =
+    [../../disko/single-disk-uefi.nix]
+    ++ lib.optional (builtins.pathExists ./hardware-configuration.nix) ./hardware-configuration.nix;
 }
