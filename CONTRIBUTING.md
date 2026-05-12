@@ -85,11 +85,9 @@ profiles import a layout, so disko wakes up and owns partitioning +
 ├── nixos/                       # NixOS-only stuff that's NOT a reusable module
 │   ├── base.nix                 # Common NixOS baseline (user, ssh, persistence map, …)
 │   ├── modules/
-│   │   ├── profile-options.nix  # Declares `profiles.impermanence.{enable,preserveDirs}`
-│   │   └── impermanence-wipe.nix# initrd wipe-root service (the active one)
+│   │   └── profile-options.nix  # Declares `profiles.impermanence.enable`
 │   ├── platforms/               # Per-hypervisor wiring (root FS, bootloader)
-│   │   ├── vm-qemu.nix          # QEMU vmVariant + 9p share
-│   │   ├── vm-virtualbox.nix    # OVA build (virtualbox-image.nix)
+│   │   ├── vm-qemu.nix          # QEMU vmVariant + 9p share + tmpfs `/` for impermanence
 │   │   └── wsl.nix              # NixOS-WSL plumbing
 │   ├── disko/                   # Reusable disk layouts (opt-in via host folder)
 │   │   ├── single-disk-uefi.nix # GPT + ESP + ext4 + systemd-boot
@@ -165,11 +163,10 @@ nixos-desktop = sharedDesktopProfile // {
    - `cfg.extraHomeImports` — HM extras (e.g.
      `[./modules/home/gaming.nix]`).
    - `hypervisorModules` — selected by `cfg.hypervisor`. Maps `qemu`
-     → `nixos/platforms/vm-qemu.nix`, `virtualbox` →
-     `nixos/platforms/vm-virtualbox.nix`, `wsl` →
+     → `nixos/platforms/vm-qemu.nix`, `wsl` →
      `nixos-wsl.nixosModules.default + nixos/platforms/wsl.nix`, and
      `none` → no platform module (host folder + disko provide root FS
-     and bootloader).
+     and bootloader). Any other value `throw`s at eval time.
 
 The same composition machine handles every target — there is no
 special path for "the bare-metal one" or "the WSL one". Adding a new
@@ -265,14 +262,13 @@ and the matching block in `flake.nix`. The short version:
 ## Adding a VM profile
 
 VM profiles don't need a host folder unless you want one — the
-platform module (`vm-qemu.nix`, `vm-virtualbox.nix`) provides
-`fileSystems."/"` and bootloader. Just add a profile entry to
-`flake.nix`:
+platform module (`vm-qemu.nix`) provides `fileSystems."/"` and
+bootloader. Just add a profile entry to `flake.nix`:
 
 ```nix
 my-vm = sharedDesktopProfile // {
   hostname = "my-vm";
-  hypervisor = "qemu";   # or "virtualbox"
+  hypervisor = "qemu";
   impermanence = true;   # or false
 };
 ```
@@ -283,21 +279,30 @@ the two would collide.
 
 ## The impermanence model
 
-The wipe service lives in `nixos/modules/impermanence-wipe.nix`. It's
-a single initrd-stage systemd unit:
+Principle 3 is unchanged: impermanence is a property of the running
+system, not a filesystem. Anything the system needs across reboots
+lives under `/nix/persist` and is bind-mounted back by the
+impermanence NixOS module. *How* `/` is wiped depends on the
+platform.
 
-- Runs after `sysroot.mount` (so `/` is visible at `/sysroot`) and
-  before `initrd-root-fs.target` (so the wipe finishes before PID 1
-  starts).
-- Iterates `/sysroot/*`, skips active mount points, and `rm -rf`s
-  anything not in `profiles.impermanence.preserveDirs`.
-- The preserve list is a profile-level option declared in
-  `nixos/modules/profile-options.nix`. Default is `["nix" "boot"
-  "tmp"]`. Platform modules can append more (e.g. `vm-qemu.nix` adds
-  `mnt` and `var` so 9p shares and the QEMU runtime survive the wipe).
+**VM profiles (tmpfs `/`).** `vm-qemu.nix` declares `/` as `tmpfs`
+inside `virtualisation.vmVariant.virtualisation.fileSystems` when
+`profiles.impermanence.enable` is true. Each boot starts with an
+empty root — there is nothing to wipe. Two activation scripts seed
+boot-critical paths that systemd expects (see comments in
+`vm-qemu.nix` for the `/sbin/init` / `/usr/lib/os-release` /
+`/run/current-system` rationale).
 
-The other half of the picture — what lives in `/nix/persist` and gets
-bind-mounted back — is split:
+**Bare-metal profiles.** Not currently implemented. The pre-refactor
+`wipe-root` initrd service has been removed and the disk-backed disko
+layouts (`single-disk-uefi.nix`, `single-disk-bios.nix`) do not yet
+provide an equivalent. All bare-metal profiles
+(`_template-bare-metal`, `nixos-desktop`, `nixos-vbox`) therefore
+have `impermanence = false` until SPEC.md Phase 4 lands a btrfs
+subvolume rollback in `nixos/modules/wipe-root.nix`.
+
+**Persistence map.** The other half of the picture — what lives in
+`/nix/persist` and gets bind-mounted back — is split:
 
 - *System paths* (machine-id, SSH host keys, NetworkManager state,
   `/var/log`, etc.) are in `nixos/base.nix`'s
@@ -307,20 +312,8 @@ bind-mounted back — is split:
   `home.persistence."/nix/persist"`. This module is auto-added to the
   user's HM imports by `mkProfile` whenever `impermanence = true`.
 
-Two rules when editing the persistence map:
-
-1. If you add a path that the system or user needs across reboots,
-   add it to one of those two files — not to a new module.
-2. If a new platform mounts something under `/` (a 9p share, a vfat
-   partition, anything in `mountpoint -q` territory), append the
-   top-level directory to that platform's
-   `profiles.impermanence.preserveDirs` list. The wipe service skips
-   active mount points, but only if the top-level entry survives the
-   `case` filter.
-
-Note: there is also an older `nixos/modules/wipe-root.nix` in the
-tree. The active wipe service is `impermanence-wipe.nix`. Treat
-`wipe-root.nix` as legacy until it's removed.
+Rule: if you add a path the system or user needs across reboots, add
+it to one of those two files — not to a new module.
 
 ## The disko model
 

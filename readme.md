@@ -235,58 +235,6 @@ The `Filesystem` column must be a real block device (`/dev/sdX`), not
 10–100× penalties on every store operation; move the distro or
 reinstall it inside the Linux filesystem before going further.
 
-### 7. Build the OVA
-
-```bash
-./scripts/build-vbox-ova.sh
-```
-
-Or, with live logs and a fast bail-out on stalled downloads (recommended
-for first build, when most cache misses happen):
-
-```bash
-nix build .#nixosConfigurations.nixos-vbox.config.system.build.virtualBoxOVA \
-  -L \
-  --max-jobs auto \
-  --cores 0 \
-  --option connect-timeout 10 \
-  --option stalled-download-timeout 30
-```
-
-While the build runs, in another shell:
-
-```bash
-ps -eo pid,etime,cmd | grep -E 'cptofs|qemu|cc1' | grep -v grep
-free -h
-```
-
-`cptofs` should appear once, push through the closure in 5–15 minutes,
-and the whole build should finish well under an hour even on a fresh
-`/nix`. If `cptofs` sits at 99% CPU for more than ~20 minutes, an AV
-exclusion is still missing — go back to step 3 or 4.
-
-### Troubleshooting cheat sheet
-
-- **`cptofs` at 99% CPU for hours** → AV scanning the `ext4.vhdx`.
-  Confirm with `ps -eo pid,etime,cmd | grep cptofs`. Re-check steps 3–4
-  including any third-party AV.
-- **Build meter `[X/Y/Z built]` frozen, no active builders in `ps`** →
-  stalled substituter connection. Ctrl-C, kill leftovers
-  (`sudo pkill -9 -f 'nix build'; sudo pkill -9 -f qemu`), retry with
-  `--option connect-timeout 10 --option stalled-download-timeout 30`.
-  `networkingMode=mirrored` in `.wslconfig` prevents most recurrences.
-- **Hundreds of derivations rebuilding that "should" be cached** → you
-  bumped `nixpkgs` to a commit Hydra hasn't finished serving. Either
-  wait a few hours or pin `flake.lock` back to a known-good commit
-  (`git checkout HEAD~1 -- flake.lock`).
-- **`/dev/kvm` missing** → step 1 wasn't applied or BIOS virtualization
-  is off. Without KVM, anything that spawns a nested VM (some image
-  builders, `nixos-rebuild build-vm`) falls back to TCG and runs
-  20–50× slower.
-- **Same closure downloaded twice** → you're hopping between WSL
-  distros. Each distro has its own `/nix/store`. Pick one for builds
-  and stick to it.
-
 ## VM workflows
 
 VM targets reuse the same base machine configuration as real-machine targets; only hypervisor-specific modules differ.
@@ -303,239 +251,6 @@ Grab keyboard with `ctrl + alt + g`.
 
 ```bash
 ./scripts/run-vm-headless.sh
-```
-
-### VirtualBox image (OVA)
-
-```bash
-./scripts/build-vbox-ova.sh
-```
-
-Import the generated `*.ova` from `./result/` into VirtualBox, then start it from the VirtualBox UI.
-
-The `nixos-vbox` profile has `impermanence = true`. On every boot, an
-initrd `wipe-root` service blows away `/` except for `/nix`, `/boot`, and
-`/tmp`; everything declared under `environment.persistence."/nix/persist"`
-(see `nixos/base.nix`) and `home.persistence."/nix/persist"` (see
-`modules/home/persistence.nix`) is bind-mounted back from `/nix/persist`.
-If you want a path to survive reboots, add it to one of those lists.
-
-First boot specifics:
-
-- `users.users.david.initialPassword = "nixos"` seeds the password. After
-  first boot, `/etc/shadow` is persisted, so `passwd` changes stick.
-- Host SSH keys are generated on first boot and then persisted.
-- Anything you put in your home directory but didn't list in
-  `modules/home/persistence.nix` will be gone after the next reboot —
-  that is the point. Add it to the list and rebuild if you want it to
-  stay.
-
-### Importing and configuring the VM in VirtualBox
-
-Tutorial for the first import. Run these on the **Windows host** (not in
-WSL) — VirtualBox is a Windows app and only sees Windows paths.
-
-#### 1. Locate the OVA from Windows
-
-`./scripts/build-vbox-ova.sh` produces a file under `./result/` inside
-WSL. Windows reaches it through `\\wsl$\<distro-name>\…`. With this repo
-at `D:\projets_python_ssd\Sencrop\NixConfig` (a Windows path that's also
-mounted into WSL), the OVA is just at:
-
-```text
-D:\projets_python_ssd\Sencrop\NixConfig\result\nixos-<version>.ova
-```
-
-If the repo lives inside the WSL Linux filesystem instead, the path
-looks like:
-
-```text
-\\wsl$\NixOS\home\david\NixConfig\result\nixos-<version>.ova
-```
-
-(`result/` is a symlink to a path under `/nix/store`. Both Windows and
-the Import dialog follow it transparently.)
-
-#### 2. Import the appliance
-
-VirtualBox UI → **File → Import Appliance** → select the `.ova` from
-step 1 → **Next**. On the appliance settings page, before clicking
-**Finish**, edit:
-
-- **Name** — set to `nixos-vbox` (matches the shared-folder commands
-  below).
-- **CPU** — 4 to 6 cores.
-- **RAM** — 8192 MB minimum if you'll run KDE; 4096 MB for headless.
-- **MAC address policy** — *Generate new MAC addresses for all network
-  adapters*.
-- **Machine Base Folder** — anywhere with ≥ 30 GB free. The VM disk
-  will live next to the `.vbox` file here.
-
-Click **Finish**. Import takes 1–3 minutes (it's just unpacking the OVA
-into a `.vdi` plus a `.vbox` definition).
-
-#### 3. Adjust VM settings before first boot
-
-Right-click the new VM → **Settings**:
-
-- **System → Processor** → enable *Nested VT-x/AMD-V* if you plan to
-  run nested VMs inside the guest.
-- **Display → Screen** → Video Memory: **128 MB**; Graphics Controller:
-  **VMSVGA**; tick *Enable 3D Acceleration* (KDE Plasma's compositor
-  uses it).
-- **Network → Adapter 1** → set *Attached to* to **Bridged Adapter**,
-  pick your physical NIC. This gives the VM a LAN IP that WSL can reach
-  for remote `nixos-rebuild` later. If bridged isn't an option (some
-  Wi-Fi drivers refuse), use NAT and add a port forward for SSH:
-  *Advanced → Port Forwarding* → add `Host 2222 → Guest 22`.
-- **Shared Folders** → add a folder pointing at the repo (see
-  *VirtualBox shared folder* below) if you want to edit the flake from
-  Windows and rebuild inside the guest. Optional.
-- **USB** → leave on USB 1.1 unless you've installed the VirtualBox
-  Extension Pack on Windows.
-
-Click **OK**.
-
-#### 4. First boot
-
-Start the VM. Expect:
-
-1. GRUB menu (~5 s) → kernel boot (~10 s).
-2. systemd brings up SDDM and auto-logs in as `david`. KDE Plasma
-   appears. The `wipe-root` impermanence service ran during initrd, so
-   `/etc/shadow`, host SSH keys, etc. are being created fresh and saved
-   to `/nix/persist` on this first boot.
-3. If you want to log in manually instead of auto-login: user `david`,
-   password `nixos`.
-
-#### 5. Change the password (and prove impermanence works)
-
-Open Konsole and run:
-
-```bash
-passwd                  # change from "nixos" to something real
-sudo reboot
-```
-
-Log back in with the new password. If it works, persistence of
-`/etc/shadow` is wired correctly. If you're back to `nixos` after the
-reboot, persistence is broken — re-check `environment.persistence` in
-`nixos/base.nix`.
-
-Bonus check: before rebooting, `touch /tmp-test-file` and
-`touch ~/throwaway`. After reboot, `/tmp-test-file` is gone (root was
-wiped) and `~/throwaway` is gone (home isn't in
-`modules/home/persistence.nix`). That's impermanence doing its job.
-
-#### 6. Get the VM's IP for remote rebuilds
-
-Inside the guest:
-
-```bash
-ip -4 addr show | awk '/inet / && $2 !~ /127\.0\.0\.1/ { print $2 }'
-```
-
-Note the IP. From WSL, future config changes don't need a new OVA — you
-push the rebuild straight in:
-
-```bash
-sudo nixos-rebuild switch --flake .#nixos-vbox \
-  --target-host david@<vm-ip> --use-remote-sudo
-```
-
-(With NAT + port-forward instead of bridged: `david@127.0.0.1:2222`
-from inside WSL won't work — WSL2 has its own NAT. Use the Windows
-host IP from WSL: `david@<windows-host-lan-ip>:2222`.)
-
-#### 7. Optional: install Guest Additions
-
-The flake already enables the in-guest service
-(`virtualisation.virtualbox.guest.enable = true;`) so clipboard sharing,
-auto-resize, and `vboxsf` shared folders work without manually mounting
-the Guest Additions ISO.
-
-#### 8. Snapshot
-
-Right-click the VM → **Snapshots → Take**. Call it `clean-first-boot`.
-If you ever want a known-good rollback target, this is it. Re-snapshot
-after any config change you want to preserve as a baseline.
-
-#### Troubleshooting
-
-- **VM hangs at GRUB or kernel panics on first boot** → the OVA was
-  built without UEFI but the VM was set to EFI (or vice-versa). In VM
-  Settings → System → Motherboard, match what `virtualbox-image.nix`
-  produced (BIOS by default).
-- **Black screen after SDDM** → 3D acceleration mismatch. Toggle it in
-  Display → Screen and reboot.
-- **Bridged adapter dropdown is empty** → VirtualBox NDIS6 driver isn't
-  installed on the host NIC. Reinstall VirtualBox or fall back to NAT
-  with port forwarding.
-- **`nixos-rebuild --target-host` fails with `Permission denied`** →
-  the `david` user has `extraGroups = ["wheel"]` but `--use-remote-sudo`
-  needs a working password or SSH key on the remote `sudo`. Either set
-  a password (`passwd` inside the VM) or add your WSL SSH key to
-  `users.users.david.openssh.authorizedKeys.keys` in `base.nix` and
-  rebuild.
-- **`passwd` change doesn't survive reboot** → `/etc/shadow` not in the
-  persisted files list, or the wipe-root service is wiping after the
-  bind mount. Check `nixos/base.nix` against the version that lists
-  `/etc/shadow` under `files = […]`.
-
-### VirtualBox shared folder (repo on host)
-
-Add the repo as a shared folder from the host (Windows PowerShell/CMD):
-
-```bash
-VBoxManage sharedfolder add "nixos-vbox" --name "nixconfig" --hostpath "D:\projets_python_ssd\Sencrop\NixConfig" --automount
-```
-
-Inside the NixOS guest:
-
-```bash
-sudo mkdir -p /mnt/nixconfig
-sudo mount -t vboxsf -o uid=$(id -u),gid=$(id -g),dmode=775,fmode=664 nixconfig /mnt/nixconfig
-ls /mnt/nixconfig
-```
-
-If your user cannot access the mount:
-
-```bash
-sudo usermod -aG vboxsf $USER
-```
-
-Then log out/in (or reboot).
-
-Optional: make the mount persistent for the `nixos-vbox` profile by adding this to
-`nixos/hosts/nixos-vbox/default.nix`:
-
-```nix
-fileSystems."/mnt/nixconfig" = {
-  device = "nixconfig";
-  fsType = "vboxsf";
-  options = [ "rw" "uid=1000" "gid=100" "dmode=0775" "fmode=0664" ];
-};
-```
-
-If unmount fails with "target is busy", leave the folder and use lazy unmount:
-
-```bash
-cd ~
-sudo umount -l /mnt/nixconfig
-sudo mount -t vboxsf -o uid=$(id -u),gid=$(id -g),dmode=775,fmode=664 nixconfig /mnt/nixconfig
-```
-
-If `lsof` is available, you can inspect active users before unmounting:
-
-```bash
-sudo lsof +D /mnt/nixconfig
-```
-
-### Rebuild inside VM
-
-```bash
-nixos-rebuild build --flake .#nixos-vbox
-sudo ./result/bin/switch-to-configuration switch
 ```
 
 ## Remote deployment
@@ -693,11 +408,11 @@ under `nixos/disko/`:
   VirtualBox VMs created without "Enable EFI" (the default), or older
   bare metal without UEFI firmware.
 
-Both are designed to coexist with the impermanence wipe-root pattern
-(`nixos/modules/impermanence-wipe.nix`): wipe-root preserves top-level
-`nix` and `boot`, so `/boot` (bootloader) and `/nix/persist`
-(impermanence's persisted-paths source) survive every boot. No
-subvolumes, no swap, no LVM — same shape as the OVA/QEMU layouts.
+Both are flat layouts (no LVM, no subvolumes, no swap) that pair with
+the QEMU `vm-qemu.nix` shape. Bare-metal impermanence (wipe-root on
+a disk-backed root) is not currently implemented — see SPEC.md
+Phase 4. Until then, bare-metal profiles run with
+`impermanence = false`.
 
 To install a profile onto a target, you don't write the host folder
 from scratch — copy the template instead:
@@ -720,14 +435,6 @@ The copied `default.nix` already includes a `pathExists` guard for
 hardware config exists. `nixos-anywhere` generates that file for you in
 step 5 below, the guard flips, and both files are imported on
 subsequent rebuilds.
-
-Note for `nixos-vbox`: the existing OVA-targeting profile gets its
-`fileSystems` from `nixos/platforms/vm-virtualbox.nix` and would clash
-with disko if you imported one of the disk files into it. To install
-the same configuration onto a real disk via `nixos-anywhere`, define a
-sibling profile in `flake.nix` (e.g. `nixos-vbox-metal`) with
-`hypervisor = "none"`, then import a disko layout from
-`nixos/hosts/nixos-vbox-metal/default.nix`.
 
 **Alternative: manual partitioning.** Skip the disko import and
 partition the target by hand before running `nixos-anywhere`. On the
@@ -909,7 +616,7 @@ Drop either (or both) into a host folder to add per-profile config
 without touching `flake.nix`.
 
 VM profiles don't need a host folder — their bootloader/filesystems come
-from `nixos/platforms/vm-qemu.nix` or `nixos/platforms/vm-virtualbox.nix`.
+from `nixos/platforms/vm-qemu.nix`.
 
 ### Starting from the bare-metal template
 
