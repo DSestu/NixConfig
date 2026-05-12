@@ -190,15 +190,11 @@
           impermanence = true;
         };
 
-        # Installed into a VirtualBox VM via `nixos-anywhere` from a live ISO,
-        # not built as an OVA. That makes it a bare-metal-style profile
-        # (`hypervisor = "none"` → no platform module) where the host folder
+        # Installed into a VirtualBox VM via `nixos-anywhere` from a live ISO.
+        # Bare-metal-style profile (`hypervisor = "none"`): the host folder
         # imports a disko layout and a hardware-configuration.nix, exactly
-        # like `_template-bare-metal`. The "OVA build" path
-        # (`hypervisor = "virtualbox"` → `vm-virtualbox.nix` →
-        # `virtualbox-image.nix`) declares `fileSystems."/"` itself and
-        # would collide with disko — see CONTRIBUTING.md "Where to look first
-        # when something breaks".
+        # like `_template-bare-metal`. There is no "build an OVA image"
+        # path — `nixos-anywhere` is the only supported flow.
         nixos-vbox =
           sharedDesktopProfile
           // {
@@ -287,16 +283,14 @@
               virtualisation.vmVariant.virtualisation.graphics = cfg.graphics;
             }
           ]
-          else if cfg.hypervisor == "virtualbox"
-          then [
-            ./nixos/platforms/vm-virtualbox.nix
-          ]
           else if cfg.hypervisor == "wsl"
           then [
             nixos-wsl.nixosModules.default
             ./nixos/platforms/wsl.nix
           ]
-          else [];
+          else if cfg.hypervisor == "none"
+          then []
+          else throw "unknown hypervisor for profile ${name}: ${cfg.hypervisor} (expected qemu|wsl|none)";
       in
         lib.nixosSystem {
           inherit system;
