@@ -158,7 +158,10 @@
             # value, but you must rename when you copy this entry.
             hostname = "REPLACE-ME";
             hypervisor = "none";
-            impermanence = true;
+            # Bare-metal impermanence is currently unwired — see SPEC.md
+            # Phase 4. Leave false until wipe-root.nix + the btrfs disko
+            # subvolume layout land.
+            impermanence = false;
             extraHomeImports = [./modules/home/gaming.nix];
           };
 
@@ -169,7 +172,9 @@
             hostname = "nixos-desktop";
             hypervisor = "none";
             extraHomeImports = [./modules/home/gaming.nix];
-            impermanence = true;
+            # See _template-bare-metal note above. SPEC.md Phase 4 will
+            # flip this back to true once wipe-root + btrfs subvols land.
+            impermanence = false;
           };
 
         #### VM's & WSL's ####
@@ -200,7 +205,9 @@
           // {
             hostname = "nixos-vbox";
             hypervisor = "none";
-            impermanence = true;
+            # See _template-bare-metal note above. SPEC.md Phase 4 will
+            # flip this back to true once wipe-root + btrfs subvols land.
+            impermanence = false;
           };
 
         nixos-wsl = {
