@@ -38,6 +38,7 @@ in {
       vscode
       code-cursor
       uv
+      pixi
       tig # git show | tig
       gh
       tableplus
