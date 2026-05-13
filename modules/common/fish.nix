@@ -10,8 +10,7 @@
   # NixOS and home-manager — but `programs.fish.{plugins,functions}` and
   # `xdg.configFile` are HM-only. NixOS gets the equivalent by shipping
   # vendor packages into `share/fish/vendor_*.d/` (see below).
-  isHM = options ? home;
-  isNixOS = options ? environment && options.environment ? systemPackages;
+  inherit (import ../_schema-detect.nix {inherit options;}) isHM isNixOS;
 
   # Packages used by the shell (eza/fzf/yazi/micro + a Nerd Font for Tide).
   fishExtraPackages = with pkgs; [

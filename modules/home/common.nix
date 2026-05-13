@@ -4,6 +4,7 @@
   pkgs,
   ...
 }: let
+  inherit (import ../_schema-detect.nix {inherit options;}) isHM isNixOS;
   commonPackages = with pkgs; [
     google-chrome
     brave
@@ -11,10 +12,10 @@
   ];
 in {
   config = lib.mkMerge [
-    (lib.optionalAttrs (options ? home) {
+    (lib.optionalAttrs isHM {
       home.packages = commonPackages;
     })
-    (lib.optionalAttrs (options ? environment && options.environment ? systemPackages) {
+    (lib.optionalAttrs isNixOS {
       environment.systemPackages = commonPackages;
     })
   ];
