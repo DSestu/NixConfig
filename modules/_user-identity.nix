@@ -4,7 +4,7 @@
 #
 #   let identity = import ../_user-identity.nix; in ...
 #
-# Same path works from `modules/home/` and `modules/common/` because
+# Same path works from `modules/home/` and `modules/dual/` because
 # both live one level under `modules/`.
 {
   gitName = "DSestu";

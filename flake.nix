@@ -99,7 +99,7 @@
       commonNixosModules = [
         ./nixos/modules/profile-options.nix
         ./nixos/base.nix
-        ./modules/common/fish.nix
+        ./modules/dual/fish.nix
         impermanence.nixosModules.impermanence
         home-manager.nixosModules.home-manager
         disko.nixosModules.default

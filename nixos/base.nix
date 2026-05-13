@@ -146,7 +146,7 @@
   # invokes `sh -c '...'` is unaffected (sh stays dash/bash via the
   # platform default), but interactive root sessions (`sudo -i`,
   # `sudo su -`) get the Tide-themed fish defined in
-  # modules/common/fish.nix instead of bash. Single-shot `sudo <cmd>`
+  # modules/dual/fish.nix instead of bash. Single-shot `sudo <cmd>`
   # invocations don't spawn a shell at all, so they're untouched.
   #
   # `initialPassword` is the escape hatch: NixOS ships with `root` locked

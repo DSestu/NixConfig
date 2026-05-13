@@ -5,7 +5,7 @@
 }: {
   imports = [
     ./modules/home/common.nix
-    ./modules/common/fish.nix
+    ./modules/dual/fish.nix
     ./modules/home/dev.nix
     ./modules/home/deployment.nix
     ./modules/home/network.nix
