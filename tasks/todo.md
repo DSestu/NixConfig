@@ -33,7 +33,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked
 - [x] **P4.2** New `nixos/modules/wipe-root.nix` (initrd btrfs subvol rollback)
 - [x] **P4.3** Btrfs subvol layout in `single-disk-uefi.nix` *(P4.3b: `single-disk-bios.nix` deferred — not currently consumed by any profile)*
 - [x] **P4.4** Wire wipe-root vs tmpfs branching into `mkProfile` *(CONTRIBUTING.md mechanism para already done in P1.4)*
-- [~] **P4.5a** Test profile + verification script wired; awaiting manual qemu boot verification by user
+- [~] **P4.5a** Disko image builds successfully (`main.raw`, 20G sparse, cached). Awaiting manual qemu boot to exercise wipe-root behavior.
 - [ ] **P4.5b** ⚠ Destructive: verify on real `nixos-desktop` hardware *(ask before running)*
 - [x] **P4.6** ~Re-enable `impermanence = true` on `nixos-desktop` + `nixos-vbox`~ *(nixos-desktop already true via user edit; nixos-vbox still false pending verification)*
 
