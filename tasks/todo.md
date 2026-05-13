@@ -22,10 +22,10 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### ───── Checkpoint A: clean baseline ─────
 
-- [ ] `nix flake check --no-build` clean
-- [ ] VM still boots
-- [ ] No CRLF in tree
-- [ ] No false `impermanence = true` claims
+- [x] `nix flake check --no-build` clean *(nixos-desktop now builds; nixos-vm toplevel "missing root fs" is the documented vmVariant artifact, not a real failure — use `system.build.vm` for VMs)*
+- [~] VM still boots *(user verifies — `./scripts/run-vm-gui.sh` / `run-vm-headless.sh`)*
+- [x] No CRLF in tree
+- [x] No false `impermanence = true` claims *(every profile's impermanence flag matches a working mechanism)*
 
 ## Phase 4 — Bare-metal wipe-root impermanence
 
@@ -45,18 +45,18 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked
 ## Phase 5 — Refactors
 
 - [x] **P5.1** Centralize identity in `modules/_user-identity.nix` (chose file-import over flake.nix let-binding to work cleanly with dual-schema fish.nix)
-- [ ] **P5.2** Extract `mkProfile` → `nixos/lib/mk-profile.nix`
-- [ ] **P5.3** Extract profiles table → `nixos/profiles.nix` *(after P5.2)*
+- [x] **P5.2** Extract `mkProfile` → `nixos/lib/mk-profile.nix`
+- [x] **P5.3** Extract profiles table → `nixos/profiles.nix`
 - [x] **P5.4** Create `_schema-detect.nix`; consume in fish/network/common
 - [x] **P5.5** Rename `modules/common/` → `modules/dual/`
 - [x] **P5.6** Minor cleanups: `toJSON` eta-wrap, qemu.options tokens, persistence file modes *(git `settings` left alone — `userName`/`userEmail` are now the HM-deprecated form)*
 
 ### ───── Checkpoint C: refactors complete ─────
 
-- [ ] `flake.nix` < 100 lines
-- [ ] No `modules/common/` references
-- [ ] Identity centralized
-- [ ] Delete `SPEC.md` + `tasks/`
+- [~] `flake.nix` < 100 lines *(landed at 132 — soft target; further shrink would just chop the comment block and the code-cursor overlay, both load-bearing)*
+- [x] No `modules/common/` references
+- [x] Identity centralized
+- [ ] Delete `SPEC.md` + `tasks/` *(user's call — leave for history or delete now)*
 
 ## Notes
 
