@@ -48,7 +48,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked
 - [ ] **P5.2** Extract `mkProfile` → `nixos/lib/mk-profile.nix`
 - [ ] **P5.3** Extract profiles table → `nixos/profiles.nix` *(after P5.2)*
 - [x] **P5.4** Create `_schema-detect.nix`; consume in fish/network/common
-- [ ] **P5.5** Rename `modules/common/` → `modules/dual/` *(after P5.4)*
+- [x] **P5.5** Rename `modules/common/` → `modules/dual/`
 - [x] **P5.6** Minor cleanups: `toJSON` eta-wrap, qemu.options tokens, persistence file modes *(git `settings` left alone — `userName`/`userEmail` are now the HM-deprecated form)*
 
 ### ───── Checkpoint C: refactors complete ─────

@@ -236,108 +236,13 @@
       };
 
       # ─── mkProfile: assembles a single profile into a nixosSystem ────
-      mkProfile = name: profile: let
-        # Defaults for optional per-profile fields.
-        cfg =
-          {
-            graphics = true;
-            extraNixosImports = [];
-            extraHomeImports = [];
-            impermanence = false;
-          }
-          // profile;
-
-        # ── 3. Host folder (auto-discovered) ──────────────────────────
-        # `nixos/hosts/<name>/default.nix` → NixOS-side host module
-        # `nixos/hosts/<name>/home.nix`    → HM-side    host module
-        # Both optional. Drop in either to add per-profile config without
-        # touching this file. Each can `imports = [./nixos/...]` or
-        # `imports = [./home/...]` to organize per-host sub-modules.
-        hostDir = ./nixos/hosts + "/${name}";
-        hostNixosImports =
-          lib.optional (builtins.pathExists (hostDir + "/default.nix")) hostDir;
-        hostHomeImports =
-          lib.optional (builtins.pathExists (hostDir + "/home.nix"))
-          (hostDir + "/home.nix");
-
-        ########### PROFILE WIRING ###########
-        # ── Profile wiring (translates the profile entry into config) ──
-        # Home-wise config, home-manager wiring. Impermanence wiring is handled by the profile-options module.
-        profileWiring = {
-          networking.hostName = cfg.hostname;
-          profiles.impermanence.enable = cfg.impermanence;
-          home-manager = {
-            useGlobalPkgs = true;
-            useUserPackages = true;
-            backupFileExtension = "bak";
-            users.david.imports =
-              # 2. Common HM baseline.
-              commonHomeImports
-              # 4. Impermanence: auto-add the user-side persistence map.
-              # The HM module is auto-imported by the NixOS module
-              # (`impermanence.nixosModules.impermanence` in
-              # `commonNixosModules`), so we only add the persistence map
-              # itself here. Manually importing
-              # `impermanence.homeManagerModules.impermanence` now triggers
-              # a deprecation assertion.
-              ++ (lib.optionals cfg.impermanence [
-                ./modules/home/persistence.nix
-              ])
-              # 3. Host-folder HM module (if home.nix exists).
-              ++ hostHomeImports
-              # 5. Per-profile HM extras.
-              ++ cfg.extraHomeImports;
-          };
-        };
-
-        ########### HYPERVISOR MODULES / SYSTEM CONFIGURATION ###########
-        # ── 5. Platform module (selected by `hypervisor`) ─────────────
-        # Owns root FS, bootloader, and any platform-specific quirks.
-        # Bare-metal (`hypervisor = "none"`) leaves this empty; the host
-        # folder + a disko layout supply the equivalent.
-        hypervisorModules =
-          if cfg.hypervisor == "qemu"
-          then [
-            ./nixos/platforms/vm-qemu.nix
-            {
-              virtualisation.vmVariant.virtualisation.graphics = cfg.graphics;
-            }
-          ]
-          else if cfg.hypervisor == "wsl"
-          then [
-            nixos-wsl.nixosModules.default
-            ./nixos/platforms/wsl.nix
-          ]
-          else if cfg.hypervisor == "none"
-          then []
-          else throw "unknown hypervisor for profile ${name}: ${cfg.hypervisor} (expected qemu|wsl|none)";
-
-        # Bare-metal impermanence: wipe-root is a btrfs subvolume
-        # rollback in initrd, paired with the btrfs disko layout. VM
-        # profiles use tmpfs `/` via vm-qemu.nix instead and don't load
-        # this module. See nixos/modules/wipe-root.nix.
-        wipeRootModules =
-          lib.optional
-          (cfg.impermanence && cfg.hypervisor == "none")
-          ./nixos/modules/wipe-root.nix;
-      in
-        lib.nixosSystem {
-          inherit system;
-          specialArgs = {inherit plasma-manager;};
-          modules =
-            # 1. Common NixOS baseline.
-            commonNixosModules
-            # 3. Host-folder NixOS module (if default.nix exists).
-            ++ hostNixosImports
-            # 5. Per-profile NixOS extras.
-            ++ cfg.extraNixosImports
-            # 2/4. Profile wiring + impermanence + HM imports.
-            ++ [profileWiring]
-            # 4b. Bare-metal wipe-root (only when impermanence + none).
-            ++ wipeRootModules
-            # 5. Platform module.
-            ++ hypervisorModules;
-        };
+      # See `nixos/lib/mk-profile.nix` for the composition recipe. The
+      # function is curried over its dependencies so each profile call
+      # is just `mkProfile name profile`.
+      mkProfile = import ./nixos/lib/mk-profile.nix {
+        inherit lib system commonNixosModules commonHomeImports nixos-wsl plasma-manager;
+        root = ./.;
+      };
     in
       lib.mapAttrs mkProfile profiles;
   };
