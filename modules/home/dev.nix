@@ -5,6 +5,7 @@
   nixgl ? null,
   ...
 }: let
+  identity = import ../_user-identity.nix;
   # On non-NixOS hosts the system's GL/Vulkan drivers can't be loaded by
   # Nix-built binaries (ABI mismatch with libglvnd in the Nix store).
   # nixGL bridges that. NixOS profiles use the system graphics stack
@@ -49,8 +50,8 @@ in {
   programs.git = {
     enable = true;
     settings = {
-      user.name = "DSestu";
-      user.email = "david.sestu@gmail.com";
+      user.name = identity.gitName;
+      user.email = identity.gitEmail;
       init.defaultBranch = "main";
       pull.rebase = false;
     };

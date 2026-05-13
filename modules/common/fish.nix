@@ -4,6 +4,7 @@
   pkgs,
   ...
 }: let
+  identity = import ../_user-identity.nix;
   # Detect which module schema we're being evaluated against.
   # `programs.fish.{enable,shellAliases,interactiveShellInit}` exist on both
   # NixOS and home-manager — but `programs.fish.{plugins,functions}` and
@@ -172,10 +173,10 @@
 
         set login_name (tailscale status --json 2>/dev/null | string match -r '"LoginName":"[^"]+"' | head -n1 | string replace -r '^"LoginName":"([^"]+)"$' '$1')
         if test -n "$login_name"
-          if test "$login_name" = "david.sestu@gmail.com"
+          if test "$login_name" = "${identity.tailscaleAccount}"
             echo "PASS tailscale auth: logged in as $login_name"
           else
-            echo "WARN tailscale auth: logged in as $login_name (expected david.sestu@gmail.com)"
+            echo "WARN tailscale auth: logged in as $login_name (expected ${identity.tailscaleAccount})"
           end
         else
           echo "WARN tailscale auth: not logged in (run 'sudo tailscale up')"
