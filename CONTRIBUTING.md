@@ -12,12 +12,14 @@ Four ideas drive every layout decision in this repo. Internalize these
 and the directory tree explains itself.
 
 **1. One flake, many profiles.** Every machine — VMs, bare-metal
-desktops, WSL distros — is a *profile* in `flake.nix`. A profile is a
-small attribute set (hostname, hypervisor, graphics yes/no,
-impermanence yes/no, extra modules). A single helper, `mkProfile`,
+desktops, WSL distros — is a *profile* declared in
+`nixos/profiles.nix`. A profile is a small attribute set (hostname,
+hypervisor, graphics yes/no, impermanence yes/no, extra modules). A
+single helper, `mkProfile` (defined in `nixos/lib/mk-profile.nix`),
 turns each profile into a `nixosSystem` by composing five ingredients
 (common NixOS baseline, common HM baseline, the host folder, the
 impermanence flag, and the per-profile extras + platform module).
+`flake.nix` itself is now just inputs + outputs glue.
 
 **2. NixOS modules vs Home Manager modules are separate concerns —
 and the directory tree reflects that.** NixOS modules configure the
@@ -54,23 +56,28 @@ profiles import a layout, so disko wakes up and owns partitioning +
 
 ```text
 .
-├── flake.nix                    # Profile dictionary + mkProfile (read this first)
+├── flake.nix                    # Thin entrypoint: inputs + outputs glue
 ├── home.nix                     # User baseline — imports every modules/home/*.nix
 ├── readme.md                    # User-facing build/install/troubleshooting
 ├── CONTRIBUTING.md              # ← you are here
 │
 ├── modules/
-│   ├── home/                    # Home Manager modules (every profile's user)
+│   ├── _user-identity.nix       # Single source of truth: git name/email, tailscale account
+│   ├── _schema-detect.nix       # `{ isHM, isNixOS }` helper for dual/ modules
+│   │
+│   ├── home/                    # Home Manager modules (user-only)
 │   │   ├── common.nix           # Browsers etc.
 │   │   ├── network.nix          # Tailscale CLI
 │   │   ├── deployment.nix       # nixos-anywhere binary
 │   │   ├── dev.nix              # editors, devenv, git, ssh
-│   │   ├── fish.nix             # fish shell + theme + tools
-│   │   ├── tide-theme.fish      # data file sourced by fish.nix
 │   │   ├── pentest.nix          # nmap, bettercap, etc.
 │   │   ├── gaming.nix           # Steam, GDLauncher
 │   │   ├── persistence.nix      # home.persistence (auto-added when impermanence on)
 │   │   └── wsl-home.nix         # HM overrides for WSL (no user systemd)
+│   │
+│   ├── dual/                    # Dual-schema modules — load under either HM or NixOS
+│   │   ├── fish.nix             # fish shell + theme + tools (schema-detects)
+│   │   └── fish_config/         # data files sourced by fish.nix
 │   │
 │   └── nixos/                   # NixOS modules (system-wide)
 │       ├── kde-suite.nix        # Orchestrator: wires NixOS-side KDE + HM-side plasma config
@@ -84,13 +91,17 @@ profiles import a layout, so disko wakes up and owns partitioning +
 │
 ├── nixos/                       # NixOS-only stuff that's NOT a reusable module
 │   ├── base.nix                 # Common NixOS baseline (user, ssh, persistence map, …)
+│   ├── profiles.nix             # Profile dictionary — every machine declared here
+│   ├── lib/
+│   │   └── mk-profile.nix       # Composition recipe: profile → nixosSystem
 │   ├── modules/
-│   │   └── profile-options.nix  # Declares `profiles.impermanence.enable`
+│   │   ├── profile-options.nix  # Declares `profiles.impermanence.enable`
+│   │   └── wipe-root.nix        # Bare-metal btrfs subvol rollback (initrd service)
 │   ├── platforms/               # Per-hypervisor wiring (root FS, bootloader)
 │   │   ├── vm-qemu.nix          # QEMU vmVariant + 9p share + tmpfs `/` for impermanence
 │   │   └── wsl.nix              # NixOS-WSL plumbing
 │   ├── disko/                   # Reusable disk layouts (opt-in via host folder)
-│   │   ├── single-disk-uefi.nix # GPT + ESP + ext4 + systemd-boot
+│   │   ├── single-disk-uefi.nix # GPT + ESP + btrfs subvols + systemd-boot
 │   │   └── single-disk-bios.nix # GPT + BIOS-boot stub + ext4 + GRUB
 │   └── hosts/                   # Per-profile host folders (auto-discovered)
 │       ├── _template-bare-metal/# SKELETON — copy, don't edit
@@ -104,6 +115,8 @@ profiles import a layout, so disko wakes up and owns partitioning +
 │       │   ├── default.nix
 │       │   └── nixos/
 │       │       └── hardware-configuration.nix
+│       ├── nixos-vm-bare-test/  # VM harness for the bare-metal wipe-root path
+│       │   └── default.nix
 │       └── nixos-wsl/
 │           ├── home.nix         # WSL profile is HM-only on the host side
 │           └── home/
@@ -120,7 +133,7 @@ host?".
 
 ## How `mkProfile` composes a system
 
-In `flake.nix`, each profile is one entry in the `profiles` attrset:
+In `nixos/profiles.nix`, each profile is one entry in the attrset:
 
 ```nix
 nixos-desktop = sharedDesktopProfile // {
@@ -155,7 +168,10 @@ nixos-desktop = sharedDesktopProfile // {
 4. **Impermanence wiring** — when the profile sets `impermanence =
    true`, `modules/home/persistence.nix` is appended to the user's HM
    imports automatically, and `profiles.impermanence.enable = true`
-   flips on the wipe service.
+   flips on. The mechanism depends on platform: VM profiles get a
+   tmpfs `/` via `vm-qemu.nix`; bare-metal profiles
+   (`hypervisor = "none"`) load `nixos/modules/wipe-root.nix` (btrfs
+   subvolume rollback in initrd) paired with the btrfs disko layout.
 
 5. **Per-profile extras + platform module:**
    - `cfg.extraNixosImports` — NixOS extras from the profile entry
@@ -221,16 +237,16 @@ per-profile by setting the same fields in the entry.
   it from `nixos/hosts/<name>/default.nix`. `hardware-configuration.nix`
   follows the same pattern (lives at `<host>/nixos/hardware-configuration.nix`).
 
-- *A new disk layout* (encrypted root, BTRFS subvolumes, separate
-  `/home`, etc.) → new file in `nixos/disko/`. Keep impermanence
-  compatibility in mind: top-level `nix` and `boot` (or whatever holds
-  the bootloader) must end up on the wipe-root preserve list. Existing
-  `single-disk-uefi.nix` and `single-disk-bios.nix` are the templates
-  to follow.
+- *A new disk layout* (encrypted root, alternative subvolume policy,
+  separate `/home`, etc.) → new file in `nixos/disko/`. Keep
+  impermanence compatibility in mind: under the wipe-root pattern,
+  the subvolume mounted at `/nix` and the ESP (`/boot`) must be
+  outside the wiped `@` subvolume. Existing `single-disk-uefi.nix` is
+  the template to follow.
 
 - *A new hypervisor* → new file in `nixos/platforms/`, plus a new
-  branch in `mkProfile`'s `hypervisorModules` `if/else if` chain. The
-  platform module is responsible for `fileSystems."/"`,
+  branch in `mk-profile.nix`'s `hypervisorModules` `if/else if`
+  chain. The platform module is responsible for `fileSystems."/"`,
   `boot.loader.*`, and any platform-specific quirks (9p shares,
   virtio drivers, EFI variables).
 
@@ -239,11 +255,11 @@ per-profile by setting the same fields in the entry.
 ## Adding a bare-metal profile
 
 The full how-to is in `nixos/hosts/_template-bare-metal/default.nix`
-and the matching block in `flake.nix`. The short version:
+and the matching block in `nixos/profiles.nix`. The short version:
 
 1. `cp -r nixos/hosts/_template-bare-metal nixos/hosts/<your-host>`.
-2. Copy the `_template-bare-metal` block in `flake.nix` to a new key
-   with the same name. Set `hostname = "<your-host>"`.
+2. Copy the `_template-bare-metal` block in `nixos/profiles.nix` to a
+   new key with the same name. Set `hostname = "<your-host>"`.
 3. Edit your *copy* of `default.nix` (and optionally `home.nix`) to
    flip UEFI ↔ BIOS, override the disk device, or add per-host
    kernel/bootloader tweaks. Drop sub-modules under `./nixos/` (system)
@@ -263,7 +279,7 @@ and the matching block in `flake.nix`. The short version:
 
 VM profiles don't need a host folder unless you want one — the
 platform module (`vm-qemu.nix`) provides `fileSystems."/"` and
-bootloader. Just add a profile entry to `flake.nix`:
+bootloader. Just add a profile entry to `nixos/profiles.nix`:
 
 ```nix
 my-vm = sharedDesktopProfile // {
@@ -383,9 +399,9 @@ top-level `configuration.nix` exists solely to fail loudly if someone
 runs `nixos-rebuild` without `--flake`. Don't put real config in it.
 
 **Don't edit the templates.** `nixos/hosts/_template-bare-metal/` and
-its companion entry in `flake.nix` are reference skeletons. Copy them
-to a new name and edit the copy. The leading underscore and the
-`REPLACE-ME` placeholder hostname are the visible signal.
+its companion entry in `nixos/profiles.nix` are reference skeletons.
+Copy them to a new name and edit the copy. The leading underscore and
+the `REPLACE-ME` placeholder hostname are the visible signal.
 
 **`--flake` everywhere.** All build/switch commands take
 `--flake .#<profile-name>`. The `nix.nixPath` entry in `vm-qemu.nix`
