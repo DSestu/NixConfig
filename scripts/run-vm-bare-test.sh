@@ -52,27 +52,28 @@ fi
 
 if [ $BOOT_ONLY -eq 0 ] && [ ! -e "$IMAGE" ]; then
   echo "Building disko btrfs image for $PROFILE..."
-  # Disko's `disko-images` mode builds raw images; we convert to qcow2
-  # afterwards for snapshot/cow semantics during testing.
-  TMP_DIR=$(mktemp -d)
-  trap "rm -rf $TMP_DIR" EXIT
+  # Disko 1.13 dropped the `--mode disko-image` CLI form. The image
+  # is now available as a derivation on the nixos config itself.
+  OUT=$(nix build ".#nixosConfigurations.$PROFILE.config.system.build.diskoImages" \
+    --no-link --print-out-paths)
 
-  nix run github:nix-community/disko -- \
-    --mode disko-image \
-    --flake ".#$PROFILE" \
-    --root-mountpoint "$TMP_DIR/root"
+  echo "diskoImages output: $OUT"
+  ls -la "$OUT"
 
-  # disko-image writes "main.raw" by default for our single-disk layout.
-  RAW="$REPO_ROOT/main.raw"
-  if [ ! -e "$RAW" ]; then
-    echo "expected $RAW from disko-image, not found" >&2
-    ls -la "$REPO_ROOT" | head
+  # The output is a derivation directory containing one raw image
+  # per disk. Our layout has a single disk named `main`, so look
+  # for the matching file.
+  RAW=$(find "$OUT" -maxdepth 2 -type f \( -name '*.raw' -o -name 'main' -o -name 'main.raw' \) | head -1)
+  if [ -z "$RAW" ]; then
+    echo "could not locate a raw image inside $OUT — files present:" >&2
+    find "$OUT" >&2
     exit 1
   fi
+  echo "raw image: $RAW"
 
   echo "Converting raw → qcow2..."
   nix shell nixpkgs#qemu --command qemu-img convert -f raw -O qcow2 "$RAW" "$IMAGE"
-  rm -f "$RAW"
+  chmod u+w "$IMAGE"
 fi
 
 if [ ! -e "$IMAGE" ]; then
@@ -84,7 +85,7 @@ echo "Booting $IMAGE..."
 echo "Tip: 'sudo poweroff' inside the VM to shut down cleanly between boots."
 echo
 
-# UEFI firmware from nixpkgs; ovmf supplies the EFI variables.
+# UEFI firmware from nixpkgs; OVMF supplies the EFI variables.
 OVMF=$(nix build --no-link --print-out-paths nixpkgs#OVMFFull.fd)
 
 exec nix shell nixpkgs#qemu --command qemu-system-x86_64 \
