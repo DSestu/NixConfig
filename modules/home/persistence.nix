@@ -19,7 +19,10 @@
       }
       "nixconfig"
 
-      ".config/gh"
+      {
+        directory = ".config/gh";
+        mode = "0700";
+      }
       ".config/git"
 
       # --- User data ---
@@ -38,8 +41,14 @@
       ".local/share/direnv"
 
       # --- Browser profiles (sessions, cookies, extensions, bookmarks) ---
-      ".config/google-chrome"
-      ".config/BraveSoftware"
+      {
+        directory = ".config/google-chrome";
+        mode = "0700";
+      }
+      {
+        directory = ".config/BraveSoftware";
+        mode = "0700";
+      }
 
       # --- Game launchers ---
       ".local/share/Steam"

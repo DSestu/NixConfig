@@ -115,7 +115,7 @@
       # crashes on this host with "GtkGLArea console lacks DMABUF support"
       # because the system's GTK build lacks DMABUF/EGL context support.
       # Revisit once the host qemu/GTK gains it.
-      qemu.options = ["-vga virtio" "-display gtk,gl=off"];
+      qemu.options = ["-vga" "virtio" "-display" "gtk,gl=off"];
       # Raise 9p msize from the 16384-byte default. The nix store share
       # (/nix/.ro-store) transfers many small files; a larger packet size
       # cuts round-trips and measurably reduces store-read latency in the VM.

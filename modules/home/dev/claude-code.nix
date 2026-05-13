@@ -144,7 +144,7 @@
     })
   pluginEntries);
 
-  toJSON = data: builtins.toJSON data;
+  toJSON = builtins.toJSON;
 in {
   home.packages = [pkgs.claude-code];
 
