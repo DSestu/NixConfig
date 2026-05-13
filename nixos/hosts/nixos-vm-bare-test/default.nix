@@ -22,6 +22,13 @@
   # Virtio disk: the disko image is exposed as /dev/vda inside qemu.
   disko.devices.disk.main.device = lib.mkForce "/dev/vda";
 
+  # disko-images defaults to a tiny raw image (~2 GiB) that overflows
+  # the moment we copy the system closure into it. 20 GiB is plenty
+  # of headroom for the baseline NixOS + impermanence machinery, and
+  # qcow2 compression means the actual file on disk stays small until
+  # something writes into it.
+  disko.devices.disk.main.imageSize = "20G";
+
   # Kernel modules needed to find the virtio root disk in initrd.
   boot.initrd.availableKernelModules = [
     "virtio_pci"
