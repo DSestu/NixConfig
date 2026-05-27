@@ -41,7 +41,6 @@
     lt = "ll -T";
     pc = "git diff --name-only --diff-filter ACMR origin/master...HEAD | xargs pre-commit run --files";
     checks = "post_install_checks";
-    gmp = "set DEFAULT_BRANCH (git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@' && git checkout $DEFAULT_BRANCH && git pull";
   };
 
   # Mamba hook — the MAMBA_EXE store path changes each rebuild, so resolve
@@ -59,6 +58,11 @@
   # `function NAME ... end` and shipped as a `share/fish/vendor_functions.d/`
   # entry by `userFunctionsSystemPkg` below.
   userFunctions = {
+    gmp = ''
+      set DEFAULT_BRANCH (git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@')
+      git checkout $DEFAULT_BRANCH && git pull
+    '';
+
     bind_bang = ''
       switch (commandline -t)[-1]
         case "!"
