@@ -63,6 +63,17 @@
       git checkout $DEFAULT_BRANCH && git pull
     '';
 
+    browse_functions = let
+      whitelist = lib.filter (n: n != "browse_functions") (lib.attrNames userFunctions);
+    in ''
+      set -l whitelist ${lib.concatStringsSep " " whitelist}
+      functions -a | while read -l f
+        if contains -- $f $whitelist
+          echo $f
+        end
+      end | fzf --preview 'functions {}'
+    '';
+
     bind_bang = ''
       switch (commandline -t)[-1]
         case "!"
@@ -86,6 +97,7 @@
       bind ! bind_bang
       bind '$' bind_dollar
       bind \cH backward-kill-word
+      bind \cf browse_functions
     '';
 
     y = ''
