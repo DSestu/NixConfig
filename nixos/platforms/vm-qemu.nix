@@ -4,10 +4,12 @@
   pkgs,
   ...
 }: {
-  # Placeholder bootloader/fs — overridden by qemu-vm wrapper from build-vm.
+  # "nodev" prevents GRUB from trying to write its boot record to the
+  # block device from inside a running VM (which fails with blkid errors).
+  # The actual boot is handled by the host's run script, not by GRUB.
   boot.loader.grub = {
     enable = true;
-    device = "/dev/vda";
+    device = "nodev";
   };
 
   # Bootstrap boot-critical paths in the tmpfs root.
@@ -88,6 +90,22 @@
     "nixpkgs=flake:nixpkgs"
     "nixos-config=/mnt/hmconfig/configuration.nix"
   ];
+
+  # Top-level fileSystems mirror the vmVariant entries so `nixos-rebuild switch`
+  # run from inside a running VM sees a valid root and doesn't trip the
+  # "fileSystems does not specify your root file system" assertion.
+  fileSystems = lib.mkIf config.profiles.impermanence.enable {
+    "/" = {
+      device = "none";
+      fsType = "tmpfs";
+      options = ["defaults" "size=2G" "mode=755"];
+    };
+    "/nix" = {
+      device = "/dev/disk/by-label/nixos";
+      fsType = "ext4";
+      neededForBoot = true;
+    };
+  };
 
   virtualisation.vmVariant = {
     virtualisation = {

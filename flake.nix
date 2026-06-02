@@ -4,6 +4,7 @@
   inputs = {
     # Specify the source of Home Manager and Nixpkgs.
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    nixpkgs-stable.url = "github:nixos/nixpkgs/nixos-25.05";
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -31,6 +32,7 @@
 
   outputs = {
     nixpkgs,
+    nixpkgs-stable,
     home-manager,
     plasma-manager,
     impermanence,
@@ -42,6 +44,10 @@
   }: let
     system = "x86_64-linux";
     lib = nixpkgs.lib;
+    pkgsStable = import nixpkgs-stable {
+      inherit system;
+      config.allowUnfree = true;
+    };
     pkgs = import nixpkgs {
       inherit system;
       config.allowUnfree = true;
@@ -60,6 +66,8 @@
                   --prefix LD_LIBRARY_PATH : "${prev.stdenv.cc.cc.lib}/lib"
               '';
           });
+          # 1.8.x jog.lua filter can't traverse pandoc's TableBody AST node.
+          quarto = pkgsStable.quarto;
         })
       ];
     };
@@ -102,10 +110,12 @@
       # `disko.nixosModules.default` is loaded but inert until a host
       # folder imports one of `nixos/disko/single-disk-{uefi,bios}.nix`.
       commonNixosModules = [
+        {nixpkgs.overlays = [(final: prev: {quarto = pkgsStable.quarto;})];}
         ./nixos/modules/profile-options.nix
         ./nixos/base.nix
         ./nixos/modules/secrets.nix
         ./modules/dual/fish.nix
+        ./modules/home/network.nix
         agenix.nixosModules.default
         impermanence.nixosModules.impermanence
         home-manager.nixosModules.home-manager

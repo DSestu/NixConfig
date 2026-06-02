@@ -25,10 +25,14 @@ let
   #   rm -rf /tmp/newhost-ssh-host-key /tmp/newhost-extra-files
   # nixos-desktop = "ssh-ed25519 AAAA... nixos-desktop";
   nixos-vm = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOz/XI3FEFVrdYOYuYl0jCyBkwXkS0rBpmAXHUpAieaE nixos-vm";
+  nixos-vm-headless = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICSHuZAfBBaPU/9gf3zhmI7bFODqwJdvnPiVUhFXwRjF nixos-vm-headless";
+  karlizen = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMfqazQyxSN1UCEb11H1prRLHil0mu2Z7wWBqqxOVgHx david.sestu@gmail.com";
 
   allHosts = [
     # nixos-desktop
     nixos-vm
+    nixos-vm-headless
+    karlizen
   ];
 in {
   # ── How to add a new secret ───────────────────────────────────────────────

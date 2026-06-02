@@ -137,7 +137,7 @@
 
   users.users.david = {
     isNormalUser = true;
-    initialPassword = "nixos";
+    passwordFile = config.age.secrets.david-password.path;
     extraGroups = ["wheel"];
     shell = pkgs.fish;
   };
@@ -157,7 +157,7 @@
   # seeds first boot.
   users.users.root = {
     shell = pkgs.fish;
-    initialPassword = config.age.secrets.david-password.path;
+    passwordFile = config.age.secrets.david-password.path;
   };
 
   services.openssh.enable = true;
@@ -167,7 +167,7 @@
   # to override these has to argue for it; the default does not bend.
   services.openssh.settings = {
     PermitRootLogin = "no";
-    PasswordAuthentication = false;
+    PasswordAuthentication = true;
     KbdInteractiveAuthentication = false;
   };
 

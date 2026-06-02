@@ -1,0 +1,13 @@
+{
+    "workbench.editorAssociations": {
+        "{git,gitlens,conflictResolution,vscode-local-history}:/**/*.tc.json": "default",
+        "*.md": "vscode.markdown.preview.editor",
+        "file:/**/*.parquet": "jupyter-data-wrangler",
+        "file:/**/*.csv": "jupyter-data-wrangler",
+        "file:/**/*.xlsx": "jupyter-data-wrangler",
+        "*.parquet": "duckdb.dataFileViewer",
+        "*.csv": "duckdb.dataFileViewer",
+        "*.tsv": "duckdb.dataFileViewer",
+        "*.xlsx": "duckdb.dataFileViewer"
+    }
+}
