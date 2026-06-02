@@ -137,7 +137,7 @@
 
   users.users.david = {
     isNormalUser = true;
-    passwordFile = config.age.secrets.david-password.path;
+    hashedPassword = "$6$qKj4oCoDbH7vNZoE$JWbXhoutrpBIOkjJeq48x6ev4mR/kftbcPFBPVPLh6CHSWhkJPiAo0YLS2XAGJFbzGr8m2Y.Rq0.Tf9iegQyT/";
     extraGroups = ["wheel"];
     shell = pkgs.fish;
   };
@@ -157,7 +157,7 @@
   # seeds first boot.
   users.users.root = {
     shell = pkgs.fish;
-    passwordFile = config.age.secrets.david-password.path;
+    hashedPassword = "$6$qKj4oCoDbH7vNZoE$JWbXhoutrpBIOkjJeq48x6ev4mR/kftbcPFBPVPLh6CHSWhkJPiAo0YLS2XAGJFbzGr8m2Y.Rq0.Tf9iegQyT/";
   };
 
   services.openssh.enable = true;
