@@ -15,6 +15,10 @@
     };
     impermanence.url = "github:nix-community/impermanence";
     nixos-wsl.url = "github:nix-community/NixOS-WSL/main";
+    agenix = {
+      url = "github:ryantm/agenix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     disko = {
       url = "github:nix-community/disko";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -33,6 +37,7 @@
     nixos-wsl,
     disko,
     nixgl,
+    agenix,
     ...
   }: let
     system = "x86_64-linux";
@@ -99,7 +104,9 @@
       commonNixosModules = [
         ./nixos/modules/profile-options.nix
         ./nixos/base.nix
+        ./nixos/modules/secrets.nix
         ./modules/dual/fish.nix
+        agenix.nixosModules.default
         impermanence.nixosModules.impermanence
         home-manager.nixosModules.home-manager
         disko.nixosModules.default

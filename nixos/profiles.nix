@@ -77,7 +77,10 @@ in {
       hostname = "nixos-vm";
       hypervisor = "qemu";
       impermanence = true;
-      extraHomeImports = [gamingHomeImport];
+      extraHomeImports = [
+        gamingHomeImport
+        (root + "/modules/home/network.nix")
+      ];
     };
 
   nixos-vm-headless = {
@@ -86,6 +89,9 @@ in {
     hypervisor = "qemu";
     graphics = false;
     impermanence = true;
+    extraHomeImports = [
+      (root + "/modules/home/network.nix")
+    ];
   };
 
   # Test target for the bare-metal wipe-root + btrfs path. Same

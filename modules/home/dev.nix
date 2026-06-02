@@ -42,6 +42,7 @@ in {
       pixi
       tig # git show | tig
       gh
+      quarto
       tableplus
       nodejs
     ]

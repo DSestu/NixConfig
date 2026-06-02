@@ -32,6 +32,23 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
+# ── agenix / SSH host key prerequisite ───────────────────────────────────────
+# Secrets are decrypted at boot using the VM's SSH host key, which must be
+# baked into the image via environment.etc in the host's default.nix.
+# If the key file is missing, generate it and add the public key to secrets/:
+#
+#   ssh-keygen -t ed25519 -N "" -f nixos/hosts/nixos-vm-bare-test/ssh_host_ed25519_key
+#   # paste the public key into secrets/secrets.nix (nixos-vm entry)
+#   EDITOR=nano RULES=secrets/secrets.nix \
+#     nix run github:ryantm/agenix -- --rekey -i ~/.ssh/id_ed25519
+#
+HOST_KEY="$REPO_ROOT/nixos/hosts/nixos-vm-bare-test/ssh_host_ed25519_key"
+if [ ! -f "$HOST_KEY" ]; then
+  echo "WARNING: $HOST_KEY not found — secrets will not work in the VM." >&2
+  echo "         See the comment above for setup instructions." >&2
+fi
+# ─────────────────────────────────────────────────────────────────────────────
+
 IMAGE="$REPO_ROOT/nixos-vm-bare-test.qcow2"
 PROFILE="nixos-vm-bare-test"
 

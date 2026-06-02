@@ -6,6 +6,15 @@ cd "$REPO_ROOT"
 
 DISK_IMAGE="$REPO_ROOT/nixos-vm.qcow2"
 
+# ── agenix / SSH host key (Option B) ─────────────────────────────────────────
+# This VM generates its SSH host key on first boot and stores it on the qcow2
+# disk. To add it to secrets/ after first boot:
+#   ssh-keyscan -p 2222 localhost | grep ed25519
+#   # paste into secrets/secrets.nix, then rekey:
+#   EDITOR=nano RULES=secrets/secrets.nix \
+#     nix run github:ryantm/agenix -- --rekey -i ~/.ssh/id_ed25519
+# ─────────────────────────────────────────────────────────────────────────────
+
 nix build '.#nixosConfigurations.nixos-vm.config.system.build.vm'
 
 # Pre-format the disk image with ext4 + label "nixos". nixos-vm uses

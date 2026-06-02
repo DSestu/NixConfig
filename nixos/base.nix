@@ -157,7 +157,7 @@
   # seeds first boot.
   users.users.root = {
     shell = pkgs.fish;
-    initialPassword = "nixos";
+    initialPassword = config.age.secrets.david-password.path;
   };
 
   services.openssh.enable = true;

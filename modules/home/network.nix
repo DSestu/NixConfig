@@ -20,6 +20,10 @@ in {
       services.tailscale = {
         enable = true;
         openFirewall = true;
+        # If false, does nothing. Condition is if tailscale-auth-key is defined in the secrets.
+        authKeyFile =
+          lib.mkIf (config.age.secrets ? tailscale-auth-key)
+          config.age.secrets.tailscale-auth-key.path;
       };
     })
   ];
