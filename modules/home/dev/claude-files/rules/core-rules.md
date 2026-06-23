@@ -28,6 +28,7 @@
 
 ## Git
 
+- NEVER commit without explicit user consent. Stage changes and show the diff, then wait for the user to say "commit". A prior commit instruction does not authorise subsequent commits.
 - NEVER use `git reset --soft origin/master` to squash a branch that is behind master. It silently reverts other people's merged work. Always `git rebase origin/master` FIRST.
 - Preferred squash: `git fetch origin master && git rebase -i origin/master` (pick first, squash rest)
 - Before any squash, verify with `git log origin/master..HEAD` that only your commits appear

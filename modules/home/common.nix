@@ -9,6 +9,7 @@
     google-chrome
     brave
     remmina
+    btop
   ];
 in {
   config = lib.mkMerge [
