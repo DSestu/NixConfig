@@ -10,6 +10,7 @@
     brave
     remmina
     btop
+    bitwarden-cli
   ];
 in {
   config = lib.mkMerge [

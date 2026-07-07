@@ -2,8 +2,7 @@
   config,
   pkgs,
   ...
-}:
-let
+}: let
   wallpaper = ./wallpapers/wallpaper.jpg;
 in {
   programs.plasma = {
@@ -44,6 +43,7 @@ in {
       kwin.MoveMouseToFocus = "Meta+F5";
       kwin.Overview = "Meta+W";
       kwin."Show Desktop" = "Meta+D";
+      kwin."Setup Window Shortcut" = "Meta+Œ";
       kwin."Switch One Desktop Down" = "Meta+Ctrl+Down";
       kwin."Switch One Desktop Up" = "Meta+Ctrl+Up";
       kwin."Switch One Desktop to the Left" = "Meta+Ctrl+Left";

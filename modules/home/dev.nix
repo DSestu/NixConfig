@@ -45,6 +45,7 @@ in {
       quarto
       tableplus
       nodejs
+      nixd # Nix language server
     ]
     ++ [warpPkg];
 
