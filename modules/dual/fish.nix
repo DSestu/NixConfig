@@ -20,6 +20,8 @@
     fzf
     fd
     nerd-fonts.meslo-lg
+    # custom packages
+    (import ./fish_config/repo-report.nix {inherit pkgs;})
   ];
 
   # Single source of truth for which fish plugins we install. Both branches
