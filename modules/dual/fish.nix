@@ -35,7 +35,7 @@
     fishPluginNames;
 
   commonShellAliases = {
-    l = "eza -Bhm --icons --no-user --git --time-style long-iso --group-directories-first --color=always --color-scale=age -F --no-permissions -s extension --git-ignore";
+    l = "eza -Bhm --icons --no-user --git --time-style long-iso --group-directories-first --color=always --color-scale=age -F --no-permissions -s extension --git-ignore --git --git-repos";
     la = "l -a";
     ll = "l -la";
     lt = "ll -T";
