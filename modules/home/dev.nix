@@ -41,13 +41,21 @@ in {
       uv
       pixi
       tig # git show | tig
-      gh
       quarto
       tableplus
       nodejs
       nixd # Nix language server
     ]
     ++ [warpPkg];
+
+  programs.gh = {
+    enable = true;
+    extensions = [pkgs.gh-stack];
+    settings = {
+      git_protocol = "https";
+      aliases.co = "pr checkout";
+    };
+  };
 
   programs.git = {
     enable = true;

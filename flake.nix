@@ -68,6 +68,9 @@
           });
           # 1.8.x jog.lua filter can't traverse pandoc's TableBody AST node.
           quarto = pkgsStable.quarto;
+          # Unstable's fish 4.8.0 drops share/fish/tools/create_manpage_completions.py,
+          # which Home Manager's programs.fish.generateCompletions still relies on.
+          fish = pkgsStable.fish;
         })
       ];
     };
