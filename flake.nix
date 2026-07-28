@@ -4,7 +4,6 @@
   inputs = {
     # Specify the source of Home Manager and Nixpkgs.
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-    nixpkgs-stable.url = "github:nixos/nixpkgs/nixos-25.05";
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -32,7 +31,6 @@
 
   outputs = {
     nixpkgs,
-    nixpkgs-stable,
     home-manager,
     plasma-manager,
     impermanence,
@@ -44,14 +42,30 @@
   }: let
     system = "x86_64-linux";
     lib = nixpkgs.lib;
-    pkgsStable = import nixpkgs-stable {
-      inherit system;
-      config.allowUnfree = true;
-    };
+    # System-wide version pins (see pins.nix). Each entry pulls its
+    # package from its own pinned nixpkgs revision, leaving everything
+    # else on the main `nixpkgs` input. This overlay is applied to both
+    # the Home Manager pkgs (below) and every NixOS profile's
+    # `nixpkgs.overlays` (see commonNixosModules).
+    pins = import ./pins.nix {inherit lib;};
+    pinsOverlay = final: prev:
+      lib.mapAttrs (
+        name: pin:
+          (import (builtins.fetchTarball {
+            url = "https://github.com/NixOS/nixpkgs/archive/${pin.rev}.tar.gz";
+            sha256 = pin.hash;
+          }) {
+            inherit system;
+            config.allowUnfree = true;
+          })
+          .${name}
+      )
+      pins;
     pkgs = import nixpkgs {
       inherit system;
       config.allowUnfree = true;
       overlays = [
+        pinsOverlay
         (final: prev: {
           # code-cursor's wrapper does not include libstdc++, so prebuilt
           # .node addons (e.g. DuckDB) that dlopen it via Cursor's nix-store
@@ -66,11 +80,6 @@
                   --prefix LD_LIBRARY_PATH : "${prev.stdenv.cc.cc.lib}/lib"
               '';
           });
-          # 1.8.x jog.lua filter can't traverse pandoc's TableBody AST node.
-          quarto = pkgsStable.quarto;
-          # Unstable's fish 4.8.0 drops share/fish/tools/create_manpage_completions.py,
-          # which Home Manager's programs.fish.generateCompletions still relies on.
-          fish = pkgsStable.fish;
         })
       ];
     };
@@ -113,7 +122,7 @@
       # `disko.nixosModules.default` is loaded but inert until a host
       # folder imports one of `nixos/disko/single-disk-{uefi,bios}.nix`.
       commonNixosModules = [
-        {nixpkgs.overlays = [(final: prev: {quarto = pkgsStable.quarto;})];}
+        {nixpkgs.overlays = [pinsOverlay];}
         ./nixos/modules/profile-options.nix
         ./nixos/base.nix
         ./nixos/modules/secrets.nix
