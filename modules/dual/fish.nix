@@ -71,6 +71,25 @@
       git checkout $DEFAULT_BRANCH && git pull
     '';
 
+    # Matrix-style typewriter greeting (randomized per-char delay), then a
+    # one-line cheatsheet for the fuzzy finders:
+    #   ctrl-f  browse user-defined functions (browse_functions)
+    #   alt-a   browse shell aliases          (browse_aliases)
+    #   ctrl-r  search command history        (fzf.fish)
+    fish_greeting = ''
+      set_color brgreen
+      set -l msg "Knock, knock, $USER."
+      set -l i 1
+      while test $i -le (string length -- $msg)
+        printf '%s' (string sub -s $i -l 1 -- $msg)
+        sleep (math (random 5 80) / 1000)
+        set i (math $i + 1)
+      end
+      set_color normal
+      printf '\n'
+      printf "🔍  %sctrl-f%s functions · %salt-a%s aliases · %sctrl-r%s commands\n" (set_color blue) (set_color normal) (set_color blue) (set_color normal) (set_color blue) (set_color normal)
+    '';
+
     browse_functions = let
       whitelist = lib.filter (n: n != "browse_functions") (lib.attrNames userFunctions);
     in ''
