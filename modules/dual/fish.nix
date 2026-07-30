@@ -43,6 +43,12 @@
     lt = "ll -T";
     pc = "git diff --name-only --diff-filter ACMR origin/master...HEAD | xargs pre-commit run --files";
     checks = "post_install_checks";
+    # Autoreloading git diff in the diffnav TUI (--watch drives its own
+    # command, so no pipe). Extra args pass through, e.g.
+    #   dnw --watch-cmd "git diff HEAD" --watch-interval 5s
+    dnw = "diffnav --watch";
+    # gh-dash TUI dashboard (config in modules/home/dev.nix, programs.gh-dash).
+    ghd = "gh dash";
   };
 
   # Mamba hook — the MAMBA_EXE store path changes each rebuild, so resolve
@@ -76,6 +82,22 @@
       end | fzf --preview 'functions {}'
     '';
 
+    # Fuzzy-browse the shell aliases defined in this config. `alias` lists
+    # every alias as `alias NAME 'CMD'`; we keep just the NAME and filter to
+    # the names in `commonShellAliases` (fish autoloads its own alias-like
+    # functions such as fish_vi_dec/inc, which we don't want here). The fzf
+    # preview shows each alias's full expansion — aliases are functions, so
+    # `functions NAME` prints the wrapped command. Bound to alt+a in
+    # fish_user_key_bindings (mirrors browse_functions on ctrl+f).
+    browse_aliases = ''
+      set -l whitelist ${lib.concatStringsSep " " (lib.attrNames commonShellAliases)}
+      alias | string replace -r "^alias (\\S+) .*" '$1' | while read -l a
+        if contains -- $a $whitelist
+          echo $a
+        end
+      end | fzf --preview 'functions {}'
+    '';
+
     bind_bang = ''
       switch (commandline -t)[-1]
         case "!"
@@ -100,6 +122,7 @@
       bind '$' bind_dollar
       bind \cH backward-kill-word
       bind \cf browse_functions
+      bind \ea browse_aliases
     '';
 
     y = ''
