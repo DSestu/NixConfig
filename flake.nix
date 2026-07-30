@@ -93,6 +93,17 @@
         ./home.nix
         # On non-NixOS hosts — critical for GUI integration:
         {targets.genericLinux.enable = true;}
+        # Standalone Nix has no per-user channels (this is a flake setup), but
+        # its default NIX_PATH still points at .../per-user/david/channels, so
+        # every `nix-shell` / `ns` invocation warns "does not exist, ignoring".
+        # Set a clean flake-based NIX_PATH to silence it; keepOldNixPath = false
+        # so the stale default isn't re-appended. Scoped here (not home.nix) so
+        # it never overrides the user NIX_PATH on the NixOS profiles, which set
+        # their own nix.nixPath (see nixos/platforms/vm-qemu.nix).
+        {
+          nix.nixPath = ["nixpkgs=flake:nixpkgs"];
+          nix.keepOldNixPath = false;
+        }
       ];
     };
 
