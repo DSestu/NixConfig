@@ -6,6 +6,7 @@
   imports = [
     ./modules/home/common.nix
     ./modules/dual/fish.nix
+    ./modules/dual/ns
     ./modules/home/dev.nix
     ./modules/home/deployment.nix
     ./modules/home/network.nix
@@ -27,6 +28,11 @@
 
   programs.home-manager.enable = true;
   programs.fish.enable = true;
+
+  # Unified throwaway-shell command (modules/dual/ns), with Tide prompt badges
+  # + per-mode color accents.
+  programs.ns.enable = true;
+  programs.ns.tideBadges.enable = true;
 
   # User-level store cleanup (current user's profiles only). Complements
   # system nix.gc on NixOS; on standalone Nix + HM this is the main scheduled GC.

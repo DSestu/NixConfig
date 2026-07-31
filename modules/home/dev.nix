@@ -62,7 +62,6 @@ in {
       tableplus
       nodejs
       nixd # Nix language server
-      bubblewrap # unprivileged sandbox; backs the `sandbox` fish function
     ]
     ++ [warpPkg];
 

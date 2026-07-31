@@ -75,16 +75,7 @@ set -g tide_left_prompt_prefix
 set -g tide_left_prompt_separator_diff_color 
 set -g tide_left_prompt_separator_same_color 
 set -g tide_left_prompt_suffix 
-# ns-shell badge: coral only inside an `ns … --` shell, which exports the
-# NS_SHELL marker. Tide renders the prompt in a background `fish -c` child that
-# re-sources this file, so the marker must be an *exported env var* (inherited
-# by that child) — a `set -g` in the parent shell would never reach it. Genuine
-# nix-shell / nix develop / direnv shells (IN_NIX_SHELL but no NS_SHELL) keep blue.
-if set -q NS_SHELL
-    set -g tide_nix_shell_bg_color FF5D5D
-else
-    set -g tide_nix_shell_bg_color 7EBAE4
-end
+set -g tide_nix_shell_bg_color 7EBAE4
 set -g tide_nix_shell_color 000000
 set -g tide_nix_shell_icon 
 set -g tide_node_bg_color 44883E

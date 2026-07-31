@@ -84,6 +84,11 @@
       ];
     };
   in {
+    # Shareable modules. A peer adds this repo as a flake input and imports
+    # one of these, then sets `programs.ns.enable = true`. See modules/dual/ns.
+    homeManagerModules.ns = import ./modules/dual/ns;
+    nixosModules.ns = import ./modules/dual/ns;
+
     homeConfigurations."david" = home-manager.lib.homeManagerConfiguration {
       inherit pkgs;
 
@@ -138,6 +143,11 @@
         ./nixos/base.nix
         ./nixos/modules/secrets.nix
         ./modules/dual/fish.nix
+        ./modules/dual/ns
+        {
+          programs.ns.enable = true;
+          programs.ns.tideBadges.enable = true;
+        }
         ./modules/home/network.nix
         agenix.nixosModules.default
         impermanence.nixosModules.impermanence
