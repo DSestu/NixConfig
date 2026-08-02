@@ -126,6 +126,7 @@
       marketplaces;
     effortLevel = "medium";
     model = "opus[1m]";
+    includeCoAuthoredBy = false;
   };
 
   # ─── home.file entries: marketplace + per-plugin cache symlinks ─────────
