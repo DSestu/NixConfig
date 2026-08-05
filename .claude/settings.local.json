@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(nix eval *)",
+      "Bash(nix flake *)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); imp=d['locks']['nodes']['impermanence']; print\\(imp.get\\('locked',{}\\).get\\('url'\\) or imp.get\\('locked',{}\\)\\)\")",
+      "Bash(xargs -I{} sh -c 'test -f {}/nixos.nix && grep -l \"bind mount or link\" {}/*.nix {}/nixos/*.nix 2>/dev/null | head -1')",
+      "Read(//usr/lib/systemd/**)",
+      "Bash(ls -la /init)",
+      "Bash(nix build *)",
+      "Bash(home-manager generations *)",
+      "Bash(/nix/store/gl38wnybsi4h473pb8gicadlsmhqqlch-user-environment/bin/warp-terminal --version)",
+      "Read(//etc/nixos/**)",
+      "Read(//etc/**)",
+      "Bash(timeout 6 /nix/store/gl38wnybsi4h473pb8gicadlsmhqqlch-user-environment/bin/warp-terminal)",
+      "Bash(echo \"exit=$?\")",
+      "Bash(WGPU_BACKEND=vulkan RUST_LOG=warn,wgpu=debug,naga=warn timeout 8 /nix/store/v2zw73jv1md1pbns3hbpbj950anzxqgn-warp-terminal-0.2026.04.08.08.36.stable_05/opt/warpdotdev/warp-terminal/warp)",
+      "Read(//home/david/.local/state/warp-terminal/**)",
+      "Read(//home/david/.local/share/warp-terminal/**)",
+      "Read(//home/david/.cache/**)",
+      "Read(//home/david/.local/**)",
+      "Bash(sudo tee /etc/sysctl.d/90-inotify.conf)",
+      "Bash(sudo sysctl --system)",
+      "Bash(sysctl fs.inotify.max_user_instances fs.inotify.max_user_watches)",
+      "Bash(lspci -nn)",
+      "Bash(glxinfo)",
+      "Bash(dpkg -l)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(d['nodes']['nixpkgs']['locked']['rev'][:12], d['nodes']['nixpkgs']['locked'].get\\('lastModified','?'\\)\\)\")",
+      "Bash(xargs -I{} strings {})",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('\\\\n'.join\\(k for k in d.keys\\(\\)\\)\\)\")",
+      "Bash(*)",
+      "Bash(python3 -m json.tool)",
+      "WebFetch(domain:nixos.wiki)",
+      "WebSearch",
+      "WebFetch(domain:wiki.nixos.org)",
+      "WebFetch(*)",
+      "Bash(cp /home/david/.claude/CLAUDE.md /home/david/github/NixConfig/modules/home/dev/claude-files/CLAUDE.md)",
+      "Bash(cp /home/david/.claude/rules/core-rules.md /home/david/github/NixConfig/modules/home/dev/claude-files/rules/core-rules.md)"
+    ]
+  }
+}
