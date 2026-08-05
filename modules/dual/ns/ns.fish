@@ -58,12 +58,13 @@ function __ns_live
         # (flask). Exported so they survive Tide's background `fish -c` render
         # child. Live has no mode/net badge — just the flask + package list.
         set -l badge (string join ' ' $pkgs)
-        # NIXPKGS_ALLOW_UNFREE needs --impure to be honored by flake eval.
-        env NS_MODE=live NS_INFO=$badge NIXPKGS_ALLOW_UNFREE=1 nix shell --impure nixpkgs#$pkgs
+        # NIXPKGS_ALLOW_* need --impure to be honored by flake eval. Insecure
+        # is acceptable here because ns shells are throwaway by design.
+        env NS_MODE=live NS_INFO=$badge NIXPKGS_ALLOW_UNFREE=1 NIXPKGS_ALLOW_INSECURE=1 nix shell --impure nixpkgs#$pkgs
     else
         set -l pkg $argv[1]
         set -l rest $argv[2..-1]
-        env NIXPKGS_ALLOW_UNFREE=1 nix shell --impure nixpkgs#$pkg --command $pkg $rest
+        env NIXPKGS_ALLOW_UNFREE=1 NIXPKGS_ALLOW_INSECURE=1 nix shell --impure nixpkgs#$pkg --command $pkg $rest
     end
 end
 
@@ -267,7 +268,7 @@ function __ns_box
     end
     set -a refs $__ns_extra_refs
     if test (count $refs) -gt 0
-        env NIXPKGS_ALLOW_UNFREE=1 nix shell --impure $refs --command bwrap $ba $inner
+        env NIXPKGS_ALLOW_UNFREE=1 NIXPKGS_ALLOW_INSECURE=1 nix shell --impure $refs --command bwrap $ba $inner
     else
         bwrap $ba $inner
     end
