@@ -27,6 +27,26 @@
       + builtins.readFile file;
   };
 
+  # ─── i-have-adhd always-on ──────────────────────────────────────────────
+  # Claude Code gets this ruleset from the skill's SessionStart hook (see
+  # ./claude-code.nix). Cursor runs no hooks, so the same SKILL.md body is
+  # turned into an alwaysApply rule. Built in a derivation rather than with
+  # builtins.readFile so evaluation doesn't have to fetch the repo (no IFD).
+  adhdSkill = "${sources.skillRepoSrcs.i-have-adhd}/skills/i-have-adhd/SKILL.md";
+
+  adhdRule = pkgs.runCommand "i-have-adhd.mdc" {} ''
+    {
+      printf -- '---\ndescription: %s\nalwaysApply: true\n---\n\n' \
+        'ADHD-friendly output — lead with the next action, number steps, suppress tangents'
+      # Drop SKILL.md's own YAML frontmatter; keep the ruleset body.
+      awk '
+        NR == 1 && $0 ~ /^---[[:space:]]*$/ { in_fm = 1; next }
+        in_fm && $0 ~ /^---[[:space:]]*$/   { in_fm = 0; next }
+        !in_fm                              { print }
+      ' ${adhdSkill}
+    } > $out
+  '';
+
   # ─── claude-mem MCP ─────────────────────────────────────────────────────
   # Claude gets this server from the plugin's .mcp.json; Cursor has no plugin
   # loader, so point it straight at the same entrypoint. Both agents then
@@ -59,6 +79,7 @@ in {
     ".cursor/rules/core-rules.mdc" =
       mkRule "Core working rules: investigation, scope, verification, git"
       ./claude-files/rules/core-rules.md;
+    ".cursor/rules/i-have-adhd.mdc".source = adhdRule;
   };
 
   # ~/.cursor/mcp.json is hand-maintained (it carries a postgres server whose

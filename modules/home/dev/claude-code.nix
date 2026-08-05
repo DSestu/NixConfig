@@ -41,8 +41,28 @@
     pluginEntries);
   };
 
+  # i-have-adhd ships its ruleset as an opt-in-always skill: a SessionStart
+  # hook that prints SKILL.md's body whenever the flag file exists. It's
+  # normally installed as a plugin (hooks.json), but we link it as a plain
+  # skill repo, so the hook is declared here instead. The script resolves
+  # SKILL.md relative to its own path, so pointing at the store copy works.
+  adhdAlwaysOnHook = "${sources.skillRepoSrcs.i-have-adhd}/hooks/always-on.sh";
+
   settings = {
     inherit enabledPlugins;
+    hooks.SessionStart = [
+      {
+        matcher = "startup|resume|clear|compact";
+        hooks = [
+          {
+            type = "command";
+            command = "sh ${adhdAlwaysOnHook}";
+            timeout = 5;
+            statusMessage = "Loading i-have-adhd ruleset...";
+          }
+        ];
+      }
+    ];
     extraKnownMarketplaces =
       lib.mapAttrs (mpName: _: {
         source = {
@@ -104,5 +124,7 @@ in {
     install -m 0600 /dev/stdin "$HOME/.claude/settings.json" <<'JSON'
     ${toJSON settings}
     JSON
+    # Opt-in flag the i-have-adhd SessionStart hook checks: present = always on.
+    touch "$HOME/.claude/.i-have-adhd-always"
   '';
 }

@@ -49,6 +49,31 @@ Use `general-purpose` or `Explore` as the subagent type — they have
 Bash access and won't pollute the parent context with the build
 transcript.
 
+## Agent parity: Claude Code and Cursor are wired together
+
+Both agents are fed from the same pinned commits in
+`modules/home/dev/agent-sources.nix`. **Never add a skill, plugin,
+marketplace, MCP server, rule, or command for one agent alone** — every
+such addition must land for Claude Code *and* Cursor in the same change.
+
+Checklist when adding anything to an agent:
+
+1. Pin the upstream in `agent-sources.nix` (`marketplaces` for
+   plugin repos, `skillRepos` for plain `skills/` trees). Hash goes in
+   as `lib.fakeHash` first; the build reports the real one.
+2. Claude Code side — `modules/home/dev/claude-code.nix`: plugins get
+   marketplace + cache links and an `enabledPlugins` entry; skills ride
+   `claudeSkillsTree`; MCP servers and hooks go in `settings`.
+3. Cursor side — `modules/home/dev/cursor.nix`: Cursor has no plugin
+   loader and runs no hooks, so the equivalent must be assembled by
+   hand — skills/commands via `cursorSkillsTree` / `cursorCommandsTree`,
+   MCP servers merged into `~/.cursor/mcp.json`, and anything Claude
+   gets from a hook re-expressed as an `alwaysApply` rule in
+   `~/.cursor/rules`.
+4. State explicitly in your summary how each side was covered. If a
+   feature genuinely has no Cursor equivalent, say so rather than
+   silently skipping it.
+
 ## Tools
 
 - `rg` (ripgrep) not `grep`; `fd` not `find` (per global rules).

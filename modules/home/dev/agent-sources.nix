@@ -88,6 +88,13 @@
       # Subdirectory holding the skill folders.
       skillsSubpath = "skills";
     };
+    i-have-adhd = {
+      owner = "ayghri";
+      repo = "i-have-adhd";
+      rev = "0047e0d323af880d4a32acbcc8bf58b3ca3bb280";
+      hash = "sha256-OofIFee+nQPZlannOZIR5Q0LJnDH88Q3b2H5p1nhuUY=";
+      skillsSubpath = "skills";
+    };
   };
 
   # ─── Derived state ──────────────────────────────────────────────────────
@@ -97,6 +104,10 @@
     };
 
   marketplaceSrcs = lib.mapAttrs (_: mkSrc) marketplaces;
+
+  # Repo roots of the plain skill repos, for consumers that need a file the
+  # skills tree doesn't carry (e.g. i-have-adhd's SessionStart hook script).
+  skillRepoSrcs = lib.mapAttrs (_: mkSrc) skillRepos;
 
   pluginEntries = lib.concatLists (lib.mapAttrsToList (mpName: mp:
     lib.mapAttrsToList (pluginName: p: {
@@ -128,15 +139,15 @@
       lib.optional (e.${attr} != null) "${pluginRootOf e}/${e.${attr}}")
     pluginEntries;
 
-  skillRepoDirs = lib.mapAttrsToList (_: r:
+  skillRepoDirs = lib.mapAttrsToList (name: r:
     if r.skillsSubpath == ""
-    then mkSrc r
-    else "${mkSrc r}/${r.skillsSubpath}")
+    then skillRepoSrcs.${name}
+    else "${skillRepoSrcs.${name}}/${r.skillsSubpath}")
   skillRepos;
 
   joinTree = name: paths: pkgs.symlinkJoin {inherit name paths;};
 in {
-  inherit marketplaces skillRepos marketplaceSrcs pluginEntries pluginRoots;
+  inherit marketplaces skillRepos marketplaceSrcs skillRepoSrcs pluginEntries pluginRoots;
 
   # Claude Code loads plugin skills through the plugin loader (namespaced as
   # `plugin:skill`), so only the plain skill repos go in ~/.claude/skills.
