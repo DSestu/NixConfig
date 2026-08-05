@@ -4,84 +4,11 @@
   lib,
   ...
 }: let
-  # ─── Declarative plugin pinning ─────────────────────────────────────────
-  # Each entry pins a marketplace repo by commit SHA + nar hash. The
-  # `pluginSubpath` is the path within that repo where the plugin lives
-  # (matches the `source` field in the marketplace's marketplace.json).
-  #
-  # Update workflow:
-  #   1. bump rev to the desired commit SHA
-  #   2. set hash to lib.fakeHash, run `nixos-rebuild switch`, copy the
-  #      hash Nix reports back here
-  #   3. bump version if the plugin's plugin.json version changed
-  marketplaces = {
-    claude-plugins-official = {
-      owner = "anthropics";
-      repo = "claude-plugins-official";
-      rev = "00679aef889efe36bb0389f81d70b6229a2013ee";
-      hash = "sha256-zB1pUtTloc2yTX735voGVkxqU7IyNBjqGJzpFOy9pH0=";
-      plugins = {
-        pyright-lsp = {
-          version = "1.0.0";
-          pluginSubpath = "plugins/pyright-lsp";
-        };
-      };
-    };
-    claude-code-warp = {
-      owner = "warpdotdev";
-      repo = "claude-code-warp";
-      rev = "b8ad3cc6c1e40b2d2a944f900a4ae0904a54dd7f";
-      hash = "sha256-ceNIw6p+T9nyimnRYRX0hUsQjwtou2RkXUquHM+9IcM=";
-      plugins = {
-        warp = {
-          version = "2.0.0";
-          pluginSubpath = "plugins/warp";
-        };
-      };
-    };
-    addy-agent-skills = {
-      owner = "addyosmani";
-      repo = "agent-skills";
-      rev = "f504276d8e074912f4763e6163b436a4ffc74d0d";
-      hash = "sha256-ngGjnKOHDXhQfY9mOhpzSGE8WJPKIApXilOZvae/1qI=";
-      plugins = {
-        agent-skills = {
-          version = "1.0.0";
-          # Plugin source is the repo root.
-          pluginSubpath = "";
-        };
-      };
-    };
-    thedotmack = {
-      owner = "thedotmack";
-      repo = "claude-mem";
-      rev = "0a43ab7632ebedcd3c94cbb79a73df13ec41e9b0";
-      hash = "sha256-FZQ8dIL17cqU8heTDh5zVCu+PKXeU4SOaoGFmV5yLvk=";
-      plugins = {
-        claude-mem = {
-          version = "12.7.5";
-          pluginSubpath = "plugin";
-        };
-      };
-    };
-  };
-
-  # ─── Derived state ──────────────────────────────────────────────────────
-  mkSrc = m:
-    pkgs.fetchFromGitHub {
-      inherit (m) owner repo rev hash;
-    };
-
-  marketplaceSrcs = lib.mapAttrs (_: mkSrc) marketplaces;
-
-  pluginEntries = lib.concatLists (lib.mapAttrsToList (mpName: mp:
-    lib.mapAttrsToList (pluginName: p: {
-      inherit mpName pluginName;
-      inherit (p) version pluginSubpath;
-      src = marketplaceSrcs.${mpName};
-      id = "${pluginName}@${mpName}";
-    }) (mp.plugins or {}))
-  marketplaces);
+  # Upstream pins (marketplaces, plugins, skill repos) live in
+  # ./agent-sources.nix so Cursor can be fed from the same commits.
+  # See that file for the bump workflow.
+  sources = import ./agent-sources.nix {inherit pkgs lib;};
+  inherit (sources) marketplaces marketplaceSrcs pluginEntries;
 
   # ─── JSON payloads claude-code expects ──────────────────────────────────
   enabledPlugins =
@@ -154,6 +81,12 @@ in {
   home.file = marketplaceLinks // pluginCacheLinks // {
     ".claude/CLAUDE.md".source = ./claude-files/CLAUDE.md;
     ".claude/rules".source = ./claude-files/rules;
+    # `recursive` links each skill individually so hand-written skills can
+    # live in ~/.claude/skills alongside the pinned ones.
+    ".claude/skills" = {
+      source = sources.claudeSkillsTree;
+      recursive = true;
+    };
   };
 
   # Index + settings JSON files are written as regular (mutable) files so

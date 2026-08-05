@@ -45,6 +45,7 @@
 in {
   imports = [
     ./dev/claude-code.nix
+    ./dev/cursor.nix
   ];
 
   home.packages = with pkgs;

@@ -20,5 +20,16 @@
     (lib.mkIf (builtins.pathExists ../../secrets/david-password.age) {
       david-password.file = ../../secrets/david-password.age;
     })
+    # `owner` matters here: unlike the other two secrets, this one is read
+    # by an unprivileged interactive shell (the `cachix` wrapper in
+    # modules/dual/fish.nix), not by a root-run service. agenix defaults to
+    # root:root 0400, which the wrapper could not read.
+    (lib.mkIf (builtins.pathExists ../../secrets/cachix-auth-token.age) {
+      cachix-auth-token = {
+        file = ../../secrets/cachix-auth-token.age;
+        owner = "david";
+        mode = "0400";
+      };
+    })
   ];
 }

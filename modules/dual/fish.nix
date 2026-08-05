@@ -81,6 +81,29 @@
     # NOTE: `ns` (and its former `sandbox`/`cowbox` modes + their Tide badges)
     # now live in the shareable module modules/dual/ns/. Not defined here.
 
+    # Wrapper that feeds cachix its auth token from the agenix secret
+    # (declared in nixos/modules/secrets.nix, decrypted to tmpfs at boot).
+    #
+    # Injected per-invocation via `env` rather than exported globally: a
+    # `set -gx CACHIX_AUTH_TOKEN` in interactiveShellInit would put a live
+    # push credential in the environment of every child process — including
+    # `ns` throwaway shells and anything they run. `env` also resolves
+    # `cachix` from PATH, so it reaches the real binary and not this
+    # function (no recursion).
+    #
+    # Guarded on readability so this degrades to plain `cachix` where the
+    # secret is absent: non-NixOS hosts, and NixOS hosts where
+    # cachix-auth-token.age hasn't been created yet. Pull-only use needs no
+    # token at all — the substituters in nixos/base.nix cover that.
+    cachix = ''
+      set -l token_file /run/agenix/cachix-auth-token
+      if test -r $token_file
+        env CACHIX_AUTH_TOKEN=(cat $token_file) cachix $argv
+      else
+        command cachix $argv
+      end
+    '';
+
     # Matrix-style typewriter greeting (randomized per-char delay), then a
     # one-line cheatsheet for the fuzzy finders:
     #   ctrl-f  browse user-defined functions (browse_functions)

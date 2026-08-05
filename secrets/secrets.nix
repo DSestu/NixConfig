@@ -55,4 +55,5 @@ in {
   # ─────────────────────────────────────────────────────────────────────────
   "tailscale-auth-key.age".publicKeys = allHosts; # See how it is used in modules/home/network.nix
   "david-password.age".publicKeys = allHosts;
+  "cachix-auth-token.age".publicKeys = allHosts; # Consumed by the `cachix` wrapper in modules/dual/fish.nix
 }

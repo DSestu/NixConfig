@@ -174,6 +174,16 @@
   nix.settings = {
     experimental-features = ["nix-command" "flakes"];
     auto-optimise-store = true;
+
+    # `extra-*` rather than plain `substituters`/`trusted-public-keys`:
+    # those two carry NixOS defaults (cache.nixos.org and its key), and a
+    # definition here would *replace* the default rather than append to
+    # it, silently cutting the system off from the upstream cache. The
+    # extra- forms append, so per-host modules can add caches too.
+    extra-substituters = ["https://nix-community.cachix.org"];
+    extra-trusted-public-keys = [
+      "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7Bkq5CX+/rkCWyvRCYg3Fs="
+    ];
   };
 
   nix.gc = {
@@ -198,7 +208,15 @@
     ];
   };
 
-  environment.systemPackages = [];
+  # cachix belongs at the system level, not in home-manager: the CLI is
+  # useless without the ability to write substituters/trusted-public-keys
+  # into the *daemon's* nix.conf, and only root can do that. Adding a
+  # cache is declarative here — extend `nix.settings` above with the
+  # cache URL and its public key, e.g.
+  #   substituters = ["https://nix-community.cachix.org"];
+  #   trusted-public-keys = ["nix-community.cachix.org-1:mB9F..."];
+  # Do not run `cachix use` and let it mutate /etc/nixos out of band.
+  environment.systemPackages = [pkgs.cachix];
 
   system.stateVersion = "25.11";
 }
