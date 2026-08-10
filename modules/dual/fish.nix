@@ -20,10 +20,21 @@
     fzf
     fd
     bat # powers fzf.fish's file-search preview (_fzf_preview_file)
+    mdcat # markdown renderer used by yazi's piper previewer
     nerd-fonts.meslo-lg
     # custom packages
     (import ./fish_config/repo-report.nix {inherit pkgs;})
   ];
+
+  # Official yazi plugin collection, maintained in lockstep with yazi's Lua
+  # API (third-party glow.yazi broke on yazi 26). piper.yazi pipes an
+  # arbitrary shell command into the previewer; glow does the rendering.
+  yaziPluginsRepo = pkgs.fetchFromGitHub {
+    owner = "yazi-rs";
+    repo = "plugins";
+    rev = "0be29a913ad61c6d119abfaaf253e96e6af5db67";
+    hash = "sha256-IDmmXzQKFx3QZ9u5lMwcTOeWeMPWzIBeKBXkGAgJMaI=";
+  };
 
   # Single source of truth for which fish plugins we install. Both branches
   # derive from this list: HM via `programs.fish.plugins = fishPluginList`,
@@ -188,15 +199,6 @@
       bind \ct _fzf_search_directory
     '';
 
-    y = ''
-      set tmp (mktemp -t "yazi-cwd.XXXXXX")
-      command yazi $argv --cwd-file="$tmp"
-      if read -z cwd < "$tmp"; and [ "$cwd" != "$PWD" ]; and test -d "$cwd"
-        builtin cd -- "$cwd"
-      end
-      rm -f -- "$tmp"
-    '';
-
     post_install_checks = ''
       echo "== Post-install checks =="
 
@@ -359,6 +361,38 @@ in {
       programs.fish = {
         plugins = fishPluginList;
         functions = userFunctions;
+      };
+
+      # Yazi config is per-user (~/.config/yazi), so HM-only; root's yazi on
+      # NixOS keeps upstream defaults. `settings` merges over yazi's builtin
+      # defaults, so only the overridden keys are declared here.
+      programs.yazi = {
+        enable = true;
+        # HM's shell wrapper (cd to yazi's exit directory) replaces the
+        # hand-written `y` fish function that used to live in userFunctions.
+        shellWrapperName = "y";
+        settings = {
+          # `edit` is the opener yazi's default open rules dispatch text
+          # files to; overriding it makes micro the editor everywhere.
+          opener.edit = [
+            {
+              run = ''micro "$@"'';
+              block = true;
+            }
+          ];
+          plugin.prepend_previewers = [
+            {
+              url = "*.md";
+              # $w = preview pane width, substituted by piper. mdcat over
+              # glow: glow takes ~2.4ms/line (4.8s for 2k lines) vs mdcat's
+              # ~20ms flat; --ansi forces formatting despite piped stdout.
+              # piper re-runs this on EVERY scroll tick, so render once into
+              # a cache keyed by inode+mtime+width and cat it afterwards.
+              run = ''piper -- c="''${TMPDIR:-/tmp}/yazi-mdcat-$(stat -c%i-%Y "$1")-$w"; [ -s "$c" ] || mdcat --columns=$w --ansi "$1" > "$c"; cat "$c"'';
+            }
+          ];
+        };
+        plugins.piper = "${yaziPluginsRepo}/piper.yazi";
       };
     })
   ];
