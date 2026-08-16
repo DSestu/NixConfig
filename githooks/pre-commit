@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Re-encrypt agenix secrets whenever the recipient list changes.
+#
+# Enable once per clone:
+#   git config core.hooksPath githooks
+#
+# Only fires when secrets/secrets.nix is part of the commit — rekeying on every
+# commit would rewrite the .age ciphertexts (age uses a fresh file key each run)
+# and fill the history with noise.
+set -euo pipefail
+
+rules_file="secrets/secrets.nix"
+
+if ! git diff --cached --name-only --diff-filter=ACMR | grep -qx "$rules_file"; then
+  exit 0
+fi
+
+if ! command -v ragenix >/dev/null 2>&1; then
+  echo "pre-commit: ragenix not found — cannot rekey secrets" >&2
+  echo "pre-commit: commit with --no-verify only if you rekeyed by hand" >&2
+  exit 1
+fi
+
+identity="${AGENIX_IDENTITY:-$HOME/.ssh/id_ed25519}"
+if [ ! -r "$identity" ]; then
+  echo "pre-commit: no readable identity at $identity" >&2
+  echo "pre-commit: set AGENIX_IDENTITY to a key listed in $rules_file" >&2
+  exit 1
+fi
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+echo "pre-commit: $rules_file changed — rekeying secrets with $identity"
+RULES="$rules_file" ragenix --rekey -i "$identity"
+
+# ragenix rewrites in place; stage whatever it touched so the commit is
+# self-consistent with the new recipient list.
+git add -- secrets/*.age
