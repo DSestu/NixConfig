@@ -26,13 +26,21 @@ let
   # nixos-desktop = "ssh-ed25519 AAAA... nixos-desktop";
   nixos-vm = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOz/XI3FEFVrdYOYuYl0jCyBkwXkS0rBpmAXHUpAieaE nixos-vm";
   nixos-vm-headless = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICSHuZAfBBaPU/9gf3zhmI7bFODqwJdvnPiVUhFXwRjF nixos-vm-headless";
+  nixos-wsl = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBlMZ3Q2ilo1Aiae6Dkwz2Xr86IMnNGfaBqd7aSJufhc nixos-wsl";
   karlizen = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMfqazQyxSN1UCEb11H1prRLHil0mu2Z7wWBqqxOVgHx david.sestu@gmail.com";
+
+  # David's current user key (~/.ssh/id_ed25519 on nixos-wsl). Distinct from
+  # `karlizen` above — kept as its own recipient so a rekey can be driven from
+  # whichever machine holds either key.
+  david-user = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMckPqNrF5yUrNoAA362P04Pm13leteSatYQ+4c+3Fxk david.sestu@gmail.com";
 
   allHosts = [
     # nixos-desktop
     nixos-vm
     nixos-vm-headless
+    nixos-wsl
     karlizen
+    david-user
   ];
 in {
   # ── How to add a new secret ───────────────────────────────────────────────

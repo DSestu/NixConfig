@@ -64,6 +64,8 @@ in {
       nodejs
       bun
       nixd # Nix language server
+      tmux # required at runtime by dmux
+      (callPackage ./dev/dmux {}) # agent multiplexer over tmux + git worktrees
     ]
     ++ [warpPkg];
 

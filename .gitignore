@@ -1,3 +1,4 @@
 nixos-vm.qcow2
 nixos-vm-headless.qcow2
 result
+.dmux/

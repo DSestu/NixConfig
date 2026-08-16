@@ -1,0 +1,24 @@
+--- a/dist/utils/paneCreation.js
++++ b/dist/utils/paneCreation.js
+@@ -68,8 +68,20 @@
+ }
+ function buildPaneBootstrapCommand(runnerPath, configPath, worktreePath) {
+     const statusVar = '__dmux_bootstrap_status';
++    const run = `${shellQuote(process.execPath)} ${shellQuote(runnerPath)} ${shellQuote(configPath)}`;
++    // This string is typed into the pane with `tmux send-keys`, so it must be
++    // valid in whatever shell the pane runs. fish is not POSIX: `VAR=$?`,
++    // `if ...; then ...; fi` and `||` are all syntax errors there.
++    if (/(^|\/)fish$/.test(process.env.SHELL || '')) {
++        return [
++            run,
++            `set ${statusVar} $status`,
++            `if test -d ${shellQuote(worktreePath)}; cd ${shellQuote(worktreePath)}; end`,
++            `test $${statusVar} -eq 0; or true`,
++        ].join('; ');
++    }
+     return [
+-        `${shellQuote(process.execPath)} ${shellQuote(runnerPath)} ${shellQuote(configPath)}`,
++        run,
+         `${statusVar}=$?`,
+         `if [ -d ${shellQuote(worktreePath)} ]; then cd ${shellQuote(worktreePath)}; fi`,
+         `test $${statusVar} -eq 0 || true`,

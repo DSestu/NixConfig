@@ -48,8 +48,27 @@
   # SKILL.md relative to its own path, so pointing at the store copy works.
   adhdAlwaysOnHook = "${sources.skillRepoSrcs.i-have-adhd}/hooks/always-on.sh";
 
+  # Status line: a Tide-styled powerline bar (os / pwd / git segments reuse the
+  # colors from modules/dual/fish.nix's tide theme), plus model, context-window
+  # usage, session cost + line churn, and the 5h / 7d rate-limit windows.
+  # The script reads Claude Code's status-line JSON on stdin; PATH is
+  # substituted so it does not depend on the ambient environment.
+  statuslineScript =
+    pkgs.runCommand "claude-statusline.sh" {
+      src = ./claude-files/statusline.sh;
+      binPath = lib.makeBinPath [pkgs.jq pkgs.git pkgs.gawk pkgs.coreutils];
+    } ''
+      substitute "$src" "$out" --subst-var binPath
+      chmod +x "$out"
+    '';
+
   settings = {
     inherit enabledPlugins;
+    statusLine = {
+      type = "command";
+      command = "${pkgs.bash}/bin/bash ${statuslineScript}";
+      padding = 0;
+    };
     hooks.SessionStart = [
       {
         matcher = "startup|resume|clear|compact";

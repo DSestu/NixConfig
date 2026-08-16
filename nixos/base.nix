@@ -135,12 +135,22 @@
   services.xserver.xkb.layout = "fr";
   console.keyMap = "fr";
 
-  users.users.david = {
-    isNormalUser = true;
-    initialPassword = "nixos";
-    extraGroups = ["wheel"];
-    shell = pkgs.fish;
-  };
+  # `hashedPasswordFile` and `initialPassword` are mutually exclusive (NixOS
+  # asserts on it), so the agenix secret takes over whenever it is committed
+  # and `initialPassword` is the fallback for a checkout without it. agenix
+  # orders `agenixInstall` before the `users` activation script, so
+  # /run/agenix/david-password exists by the time the account is created.
+  users.users.david =
+    {
+      isNormalUser = true;
+      extraGroups = ["wheel"];
+      shell = pkgs.fish;
+    }
+    // (
+      if builtins.pathExists ../secrets/david-password.age
+      then {hashedPasswordFile = config.age.secrets.david-password.path;}
+      else {initialPassword = "nixos";}
+    );
 
   # Use fish for root too. Tradeoff: fish isn't POSIX, so any script that
   # invokes `sh -c '...'` is unaffected (sh stays dash/bash via the
