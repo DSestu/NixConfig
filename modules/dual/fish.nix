@@ -39,6 +39,11 @@
   # Single source of truth for which fish plugins we install. Both branches
   # derive from this list: HM via `programs.fish.plugins = fishPluginList`,
   # NixOS via `environment.systemPackages = ... fishPluginPackages`.
+  # zoxide's shell function is renamed to `j` so it can coexist with the `z`
+  # fish plugin below, which already binds `z`. Consumed by both schema
+  # branches (NixOS calls the option `flags`, home-manager calls it `options`).
+  zoxideInitFlags = ["--cmd" "j"];
+
   fishPluginNames = ["tide" "fzf-fish" "z"];
   fishPluginPackages = map (n: pkgs.fishPlugins.${n}) fishPluginNames;
   fishPluginList =
@@ -119,9 +124,13 @@
     # one-line cheatsheet for the fuzzy finders:
     #   ctrl-f  browse user-defined functions (browse_functions)
     #   alt-a   browse shell aliases          (browse_aliases)
+    #   ctrl-g  attach to a tmux session      (browse_sessions / sesh)
     #   ctrl-r  search command history        (fzf.fish)
     #   ctrl-t  find files                    (fzf.fish _fzf_search_directory)
     #   **<tab> expand recursive-glob suggestions (fish builtin)
+    # …and a tmux line. prefix+S is ours (sesh, see modules/home/dev.nix);
+    # prefix+s / prefix+d are tmux builtins. Printed only inside tmux, where
+    # the bindings actually resolve.
     fish_greeting = ''
       set_color brgreen
       set -l msg "Knock, knock, $USER."
@@ -133,11 +142,14 @@
       end
       set_color normal
       printf '\n'
-      printf "🔍  %sctrl-f%s functions · %salt-a%s aliases · %sctrl-r%s commands · %sctrl-t%s files · %s**<tab>%s suggestions\n" (set_color blue) (set_color normal) (set_color blue) (set_color normal) (set_color blue) (set_color normal) (set_color blue) (set_color normal) (set_color blue) (set_color normal)
+      printf "🔍  %sctrl-f%s functions · %salt-a%s aliases · %sctrl-r%s commands · %sctrl-t%s files · %sctrl-g%s sessions · %s**<tab>%s suggestions\n" (set_color blue) (set_color normal) (set_color blue) (set_color normal) (set_color blue) (set_color normal) (set_color blue) (set_color normal) (set_color blue) (set_color normal) (set_color blue) (set_color normal)
       # Throwaway shells (see the `ns` command, modules/dual/ns). Each token is
       # tinted to match its Tide badge: ns=nix-blue, --=green, !=sand, @=violet,
       # -N=red (offline), -h=dim.
       printf "📦  %sns%s <pkg> run · <pkg> %s--%s shell · %s!%s isolated · %s@%s rehearse (reverts) · %s-N%s offline · ns %s-h%s\n" (set_color 7EBAE4) (set_color normal) (set_color 5FD700) (set_color normal) (set_color D7AF5F) (set_color normal) (set_color AF87FF) (set_color normal) (set_color CC0000) (set_color normal) (set_color 6C6C6C) (set_color normal)
+      if set -q TMUX
+        printf "🪟  %sctrl-b S%s sessions (sesh) · %sctrl-b s%s tree · %sctrl-b d%s detach · %sctrl-b w%s windows\n" (set_color blue) (set_color normal) (set_color blue) (set_color normal) (set_color blue) (set_color normal) (set_color blue) (set_color normal)
+      end
     '';
 
     browse_functions = let
@@ -170,6 +182,40 @@
       end | fzf --preview 'functions {}'
     '';
 
+    # Fuzzy-pick a tmux session and attach to it. The same picker as tmux's
+    # prefix+S binding (modules/home/dev.nix), reachable on ctrl+g from a bare
+    # shell — that binding needs a prefix key, so it can't help you get *into*
+    # tmux in the first place.
+    #
+    # `sesh connect` attaches from outside tmux and switch-clients from inside,
+    # so this is safe to hit in a dmux pane too (no nested server). Guarded on
+    # `command -q` because this module is shared with hosts that don't import
+    # modules/home/dev.nix and so have no sesh.
+    browse_sessions = ''
+      if not command -q sesh
+        echo "sesh is not installed on this host" >&2
+        return 1
+      end
+      # Live tmux sessions first, then configured ones, then zoxide's frecent
+      # directories. sesh treats a missing zoxide as fatal rather than skipping
+      # it, so this listing depends on programs.zoxide staying enabled.
+      #
+      # ctrl-x kills the highlighted session and refreshes the list in place.
+      # `{2..}` drops the icon column that --icons prepends. Rows that are
+      # zoxide directories rather than live sessions have no session to kill,
+      # hence the silenced failure — kill-session just no-ops on them.
+      set -l target (sesh list --icons | fzf --no-sort --ansi \
+        --border-label ' sesh ' --prompt '⚡  ' \
+        --header 'enter: attach · ctrl-x: kill · esc: cancel' \
+        --bind 'ctrl-x:execute-silent(tmux kill-session -t {2..} 2>/dev/null)+reload(sesh list --icons)')
+      if test -z "$target"
+        commandline -f repaint
+        return 0
+      end
+      sesh connect $target
+      commandline -f repaint
+    '';
+
     bind_bang = ''
       switch (commandline -t)[-1]
         case "!"
@@ -195,6 +241,8 @@
       bind \cH backward-kill-word
       bind \cf browse_functions
       bind \ea browse_aliases
+      # ctrl+g ("go to session") is unbound in fish's presets.
+      bind \cg browse_sessions
       # fzf.fish ships file/dir search on ctrl+alt+f; also expose it on ctrl+t.
       bind \ct _fzf_search_directory
     '';
@@ -348,6 +396,13 @@ in {
         fishExtraPackages
         ++ fishPluginPackages
         ++ [tideThemeSystemPkg userFunctionsSystemPkg];
+
+      # See the HM branch for why zoxide lands on `j`. The NixOS module spells
+      # the init arguments `flags`; home-manager spells them `options`.
+      programs.zoxide = {
+        enable = true;
+        flags = zoxideInitFlags;
+      };
     })
 
     # home-manager branch: native option-based config writes everything
@@ -361,6 +416,16 @@ in {
       programs.fish = {
         plugins = fishPluginList;
         functions = userFunctions;
+      };
+
+      # zoxide is installed for sesh's benefit — a bare `sesh list` probes it
+      # and treats a missing zoxide as fatal, so without it the session picker
+      # comes up empty. It lands on `j`, not `z`, because the `z` fish plugin
+      # above already owns that name. The two keep separate frecency databases
+      # and will not agree; `j` is the one sesh reads from.
+      programs.zoxide = {
+        enable = true;
+        options = zoxideInitFlags;
       };
 
       # Yazi config is per-user (~/.config/yazi), so HM-only; root's yazi on

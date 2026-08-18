@@ -29,7 +29,17 @@ buildNpmPackage (finalAttrs: {
   # fish rejects all three, so with fish as the pane shell the agent never
   # launches. The patch adds a fish branch, picked at runtime off $SHELL.
   # Upstream has no shell-detection here — re-check on every version bump.
-  patches = [./fish-pane-bootstrap.patch];
+  # dmux installs its `client-resized` tmux hook with a *blocking* `run-shell`
+  # (no `-b`), unlike every other hook it installs. tmux forks a shell per
+  # resize event and stalls its command queue while it runs; dmux answers each
+  # signal with `resize-window` + `select-layout`, which emits another
+  # `client-resized`. Dragging a window edge therefore wedges the whole tmux
+  # server — every client on that socket, dmux or not, stops accepting input.
+  # The patch adds `-b` at the three sites that set the hook.
+  patches = [
+    ./fish-pane-bootstrap.patch
+    ./resize-hook-nonblocking.patch
+  ];
 
   # The lockfile covers runtime deps only, so devDependencies must go too —
   # otherwise `npm ci` decides the lock is out of sync with package.json and
