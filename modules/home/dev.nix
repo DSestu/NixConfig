@@ -46,6 +46,7 @@ in {
   imports = [
     ./dev/claude-code.nix
     ./dev/cursor.nix
+    ./dev/dbhub.nix
   ];
 
   home.packages = with pkgs;
