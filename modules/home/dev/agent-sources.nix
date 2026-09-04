@@ -61,6 +61,39 @@
         };
       };
     };
+    humanizer = {
+      owner = "blader";
+      repo = "humanizer";
+      rev = "e2e92e7b4b8229253ed5c8e81dc65463fdeddda5";
+      hash = "sha256-n08pud3m9ka1Ymqv6qinSCUku975FM2LJRboi9ur5D4=";
+      plugins = {
+        humanizer = {
+          version = "2.11.2";
+          # Plugin source is the repo root.
+          pluginSubpath = "";
+          # Unusual layout: SKILL.md sits at the repo root (plugin.json says
+          # `skills: ["./"]`), so there is no directory *of* skills to hand
+          # Cursor. `skillRootName` wraps the root as a single skill dir.
+          skillRootName = "humanizer";
+        };
+      };
+    };
+    ponytail = {
+      owner = "DietrichGebert";
+      repo = "ponytail";
+      rev = "974d940a1c5344210874150b98ff0d2c861fab6a";
+      hash = "sha256-ytmLscDv7OVFyX/9gsfGaZmTpEnaMDTZnwzUtcbbcS0=";
+      plugins = {
+        ponytail = {
+          version = "4.9.0";
+          pluginSubpath = "";
+          skillsSubpath = "skills";
+          # No commandsSubpath: the repo's commands/ holds Codex-flavoured
+          # .toml files, which neither Claude Code nor Cursor loads (both
+          # want .md). The six skills carry the same behaviour.
+        };
+      };
+    };
     thedotmack = {
       owner = "thedotmack";
       repo = "claude-mem";
@@ -115,6 +148,7 @@
       inherit (p) version pluginSubpath;
       skillsSubpath = p.skillsSubpath or null;
       commandsSubpath = p.commandsSubpath or null;
+      skillRootName = p.skillRootName or null;
       src = marketplaceSrcs.${mpName};
       id = "${pluginName}@${mpName}";
     }) (mp.plugins or {}))
@@ -139,6 +173,21 @@
       lib.optional (e.${attr} != null) "${pluginRootOf e}/${e.${attr}}")
     pluginEntries;
 
+  # A plugin whose SKILL.md *is* its own root is not a directory of skills, so
+  # it cannot be symlinkJoin'd into the flat tree directly (that would splat
+  # README.md, agents/, … into ~/.cursor/skills). Link it under its name.
+  wrapSkillDir = name: path:
+    pkgs.runCommand "skill-dir-${name}" {} ''
+      mkdir -p $out
+      ln -s ${path} $out/${name}
+    '';
+
+  pluginRootSkillDirs =
+    lib.concatMap (e:
+      lib.optional (e.skillRootName != null)
+      (wrapSkillDir e.skillRootName (pluginRootOf e)))
+    pluginEntries;
+
   skillRepoDirs = lib.mapAttrsToList (name: r:
     if r.skillsSubpath == ""
     then skillRepoSrcs.${name}
@@ -156,7 +205,8 @@ in {
   # Cursor has no plugin loader: flatten repo skills *and* plugin skills into
   # one tree so ~/.cursor/skills ends up with the same skill set.
   cursorSkillsTree =
-    joinTree "cursor-skills" (skillRepoDirs ++ pluginDirs "skillsSubpath");
+    joinTree "cursor-skills"
+    (skillRepoDirs ++ pluginDirs "skillsSubpath" ++ pluginRootSkillDirs);
 
   # Plugin slash-commands, for ~/.cursor/commands.
   cursorCommandsTree = joinTree "cursor-commands" (pluginDirs "commandsSubpath");

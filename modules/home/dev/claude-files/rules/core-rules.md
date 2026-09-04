@@ -32,6 +32,7 @@
 - NEVER use `git reset --soft origin/master` to squash a branch that is behind master. It silently reverts other people's merged work. Always `git rebase origin/master` FIRST.
 - Preferred squash: `git fetch origin master && git rebase -i origin/master` (pick first, squash rest)
 - Before any squash, verify with `git log origin/master..HEAD` that only your commits appear
+- Never write a description in a PR you open. Title only — the commit messages carry the rationale, and a PR body just duplicates them and rots. Use `gh pr create --body ""`, and clear the body `gh stack submit --auto` copies from the commit
 
 ## Knowledge Repo
 

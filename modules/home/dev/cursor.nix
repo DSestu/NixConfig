@@ -80,6 +80,13 @@ in {
       mkRule "Core working rules: investigation, scope, verification, git"
       ./claude-files/rules/core-rules.md;
     ".cursor/rules/i-have-adhd.mdc".source = adhdRule;
+
+    # ponytail's Claude Code plugin arms itself through a hook
+    # (hooks/claude-codex-hooks.json). Cursor runs no hooks, so use the rule
+    # the upstream repo already ships for Cursor — it is `alwaysApply: true`,
+    # so no wrapping is needed, unlike i-have-adhd's SKILL.md above.
+    ".cursor/rules/ponytail.mdc".source =
+      "${sources.pluginRoots."ponytail@ponytail"}/.cursor/rules/ponytail.mdc";
   };
 
   # ~/.cursor/mcp.json is hand-maintained (it carries a postgres server whose

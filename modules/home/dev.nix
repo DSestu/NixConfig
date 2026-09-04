@@ -47,6 +47,7 @@ in {
     ./dev/claude-code.nix
     ./dev/cursor.nix
     ./dev/dbhub.nix
+    ./dev/code-graph-rag.nix
   ];
 
   home.packages = with pkgs;
