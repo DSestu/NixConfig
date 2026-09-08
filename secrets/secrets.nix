@@ -26,7 +26,12 @@ let
   #   rm -rf /tmp/newhost-ssh-host-key /tmp/newhost-extra-files
   # nixos-desktop = "ssh-ed25519 AAAA... nixos-desktop";
   nixos-vm = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOz/XI3FEFVrdYOYuYl0jCyBkwXkS0rBpmAXHUpAieaE nixos-vm";
-  nixos-vm-headless = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICSHuZAfBBaPU/9gf3zhmI7bFODqwJdvnPiVUhFXwRjF nixos-vm-headless";
+  # Regenerated 2026-09-08: the qcow2 was recreated, so sshd generated a
+  # fresh host key and the old recipient could no longer decrypt anything.
+  # If you delete nixos-vm-headless.qcow2 again, this key changes again —
+  # harvest the new one from /nix/persist/etc/ssh/ssh_host_ed25519_key.pub
+  # inside the VM and rekey.
+  nixos-vm-headless = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMawt4TPx5c4Esx23ZqmbeTFkaJeH7bNzv655VcGtnI9 root@nixos-vm-headless";
   nixos-wsl = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBlMZ3Q2ilo1Aiae6Dkwz2Xr86IMnNGfaBqd7aSJufhc nixos-wsl";
   karlizen = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMfqazQyxSN1UCEb11H1prRLHil0mu2Z7wWBqqxOVgHx david.sestu@gmail.com";
 
