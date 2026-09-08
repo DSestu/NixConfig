@@ -40,7 +40,8 @@ cd "$REPO_ROOT"
 #
 #   ssh-keygen -t ed25519 -N "" -f nixos/hosts/nixos-vm-bare-test/ssh_host_ed25519_key
 #   # paste the public key into secrets/secrets.nix (nixos-vm entry)
-#   EDITOR=nano RULES=secrets/secrets.nix \
+#   cd secrets   # agenix resolves paths relative to CWD
+#   RULES=./secrets.nix \
 #     nix run github:ryantm/agenix -- --rekey -i ~/.ssh/id_ed25519
 #
 HOST_KEY="$REPO_ROOT/nixos/hosts/nixos-vm-bare-test/ssh_host_ed25519_key"

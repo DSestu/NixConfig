@@ -3,8 +3,15 @@
 # a given .age file committed yet build without errors.
 # To add a secret:
 #   1. Add its public keys to secrets/secrets.nix
-#   2. Run: nix run github:ryantm/agenix -- -e secrets/<name>.age
+#   2. From the secrets/ directory (agenix resolves paths relative to CWD,
+#      so running this from the repo root writes the file in the wrong
+#      place), pipe the value in rather than using an editor:
+#        cd secrets
+#        printf '%s\n' 'the-value' \
+#          | RULES=./secrets.nix nix run github:ryantm/agenix -- -e <name>.age -i ~/.ssh/id_ed25519
 #   3. Declare it below and reference config.age.secrets.<name>.path
+#
+# See the header of secrets/secrets.nix for the full workflow.
 {
   config,
   lib,

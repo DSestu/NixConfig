@@ -9,8 +9,9 @@ let
   #   ssh-keygen -t ed25519 -N "" -f /tmp/newhost-ssh-host-key
   #   cat /tmp/newhost-ssh-host-key.pub   # → paste below
   #
-  #   # Re-encrypt all secrets for the new host (run from repo root)
-  #   EDITOR=nano RULES=secrets/secrets.nix nix run github:ryantm/agenix -- --rekey -i ~/.ssh/id_ed25519
+  #   # Re-encrypt all secrets for the new host (run from THIS directory)
+  #   cd secrets
+  #   RULES=./secrets.nix nix run github:ryantm/agenix -- --rekey -i ~/.ssh/id_ed25519
   #
   #   # Stage key for nixos-anywhere injection
   #   mkdir -p /tmp/newhost-extra-files/etc/ssh
@@ -43,13 +44,54 @@ let
     david-user
   ];
 in {
+  # ── ALWAYS run agenix from THIS directory ────────────────────────────────
+  # agenix resolves both the FILE argument and $RULES relative to the
+  # current working directory — NOT relative to this file. Run it from the
+  # repo root and `-e my-secret.age` silently creates `./my-secret.age` at
+  # the repo root, while `--rekey` reports "<file> wasn't created" for every
+  # secret. `RULES=secrets.nix` also fails: Nix needs an explicit path, so
+  # it must be `RULES=./secrets.nix`. Hence: `cd secrets` first, always.
+  #
+  # On a NixOS host `ragenix` is on PATH (nixos/modules/secrets.nix). It is a
+  # drop-in for `--rekey`, but the two tools differ in two ways that matter:
+  #
+  #                    agenix (bash, via nix run)   ragenix (Rust, on PATH)
+  #   path resolution  relative to your CWD         relative to the rules file
+  #   piping a value   automatic when stdin is      needs an explicit
+  #                    not a tty                    EDITOR='cp -- /dev/stdin'
+  #
+  # `cd secrets` + `RULES=./secrets.nix` is correct for BOTH, which is why
+  # every recipe below uses it. (ragenix's rules-relative behaviour is also
+  # why githooks/pre-commit can legitimately run it from the repo root.)
+  # ─────────────────────────────────────────────────────────────────────────
+  #
   # ── How to add a new secret ───────────────────────────────────────────────
   # 1. Declare it below with the hosts that need to decrypt it:
   #      "my-secret.age".publicKeys = allHosts;
   #
-  # 2. Create the encrypted file (opens $EDITOR, paste the secret, save):
-  #      EDITOR=nano RULES=secrets/secrets.nix nix run github:ryantm/agenix -- -e my-secret.age -i ~/.ssh/id_ed25519
-  #      (run from repo root; FILE is relative to secrets.nix, not the repo root)
+  # 2. Create the encrypted file. PREFER PIPING — when stdin is not a
+  #    terminal, agenix ignores $EDITOR and does `cp -- /dev/stdin`, so the
+  #    value lands byte-for-byte with exactly one trailing newline and no
+  #    editor can sneak in a blank line:
+  #      cd secrets
+  #      printf '%s\n' 'the-secret-value' \
+  #        | RULES=./secrets.nix nix run github:ryantm/agenix -- -e my-secret.age -i ~/.ssh/id_ed25519
+  #
+  #    Or generate it in place, never seeing the value at all:
+  #      nix shell nixpkgs#mkpasswd --command mkpasswd -m yescrypt \
+  #        | RULES=./secrets.nix nix run github:ryantm/agenix -- -e my-secret.age -i ~/.ssh/id_ed25519
+  #
+  #    With ragenix, the same pipe needs the editor spelled out:
+  #      printf '%s\n' 'the-secret-value' \
+  #        | EDITOR='cp -- /dev/stdin' RULES=./secrets.nix ragenix -e my-secret.age -i ~/.ssh/id_ed25519
+  #
+  #    For a genuinely multi-line secret, an editor is fine (stdin is a tty,
+  #    so $EDITOR is honoured) — just don't leave a trailing blank line:
+  #      cd secrets
+  #      EDITOR=nano RULES=./secrets.nix nix run github:ryantm/agenix -- -e my-secret.age -i ~/.ssh/id_ed25519
+  #
+  #    Verify the shape afterwards (single-line secrets should print 1):
+  #      nix shell nixpkgs#age --command age -d -i ~/.ssh/id_ed25519 my-secret.age | wc -l
   #
   # 3. Declare it in nixos/modules/secrets.nix:
   #      (lib.mkIf (builtins.pathExists ../../secrets/my-secret.age) {
@@ -60,6 +102,13 @@ in {
   #      config.age.secrets.my-secret.path   # → /run/agenix/my-secret
   #
   # 5. Commit both secrets/secrets.nix and secrets/my-secret.age
+  #
+  # ── Rekey after changing the recipient list ───────────────────────────────
+  #      cd secrets
+  #      RULES=./secrets.nix nix run github:ryantm/agenix -- --rekey -i ~/.ssh/id_ed25519
+  #
+  # `githooks/pre-commit` does this for you whenever this file is part of a
+  # commit (enable once per clone: `git config core.hooksPath githooks`).
   # ─────────────────────────────────────────────────────────────────────────
   "tailscale-auth-key.age".publicKeys = allHosts; # See how it is used in modules/home/network.nix
   "david-password.age".publicKeys = allHosts;

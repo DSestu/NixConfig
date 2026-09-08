@@ -11,7 +11,8 @@ DISK_IMAGE="$REPO_ROOT/nixos-vm.qcow2"
 # disk. To add it to secrets/ after first boot:
 #   ssh-keyscan -p 2222 localhost | grep ed25519
 #   # paste into secrets/secrets.nix, then rekey:
-#   EDITOR=nano RULES=secrets/secrets.nix \
+#   cd secrets   # agenix resolves paths relative to CWD
+#   RULES=./secrets.nix \
 #     nix run github:ryantm/agenix -- --rekey -i ~/.ssh/id_ed25519
 # ─────────────────────────────────────────────────────────────────────────────
 

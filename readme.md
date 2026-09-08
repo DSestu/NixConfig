@@ -312,8 +312,27 @@ plaintext in `/run/agenix/<name>`.
 Currently in use: the login password hash, a Tailscale auth key, and a
 Cachix token.
 
-`ragenix` is on `PATH` on NixOS hosts, so you can drop the `nix run …`
-prefix from every command below and just type `ragenix`.
+> **Always `cd secrets` first, and always write `RULES=./secrets.nix`.**
+> agenix resolves the filename *and* the rules path relative to your
+> current directory, not relative to `secrets.nix`. From the repo root,
+> `-e david-password.age` quietly creates `./david-password.age` **at the
+> repo root** and `--rekey` reports "wasn't created" for every secret.
+> `RULES=secrets.nix` without the `./` fails too — Nix needs a real path.
+
+On NixOS hosts `ragenix` is on `PATH`, so you can drop the `nix run …`
+prefix. It's a true drop-in for `--rekey`, but it differs in two ways:
+it resolves paths relative to the **rules file** rather than your CWD
+(which is why `githooks/pre-commit` can run it from the repo root), and
+it has no automatic stdin handling — to pipe a value in you must spell
+the editor out:
+
+```bash
+printf '%s\n' 'the-value' \
+  | EDITOR='cp -- /dev/stdin' RULES=./secrets.nix ragenix -e my-secret.age -i ~/.ssh/id_ed25519
+```
+
+`cd secrets` + `RULES=./secrets.nix` is correct for both tools, so every
+recipe below uses it.
 
 ### Add a secret
 
@@ -323,12 +342,24 @@ prefix from every command below and just type `ragenix`.
    "my-secret.age".publicKeys = allHosts;
    ```
 
-2. Create it — this opens `$EDITOR`; paste the secret and save. Run from
-   the **repo root**, but note the filename is relative to `secrets.nix`,
-   not to the repo root:
+2. Create it by **piping the value in** — no editor involved:
 
    ```bash
-   EDITOR=nano RULES=secrets/secrets.nix \
+   cd secrets
+   printf '%s\n' 'the-secret-value' \
+     | RULES=./secrets.nix nix run github:ryantm/agenix -- -e my-secret.age -i ~/.ssh/id_ed25519
+   ```
+
+   This works because agenix checks whether stdin is a terminal: when it
+   isn't, it ignores `$EDITOR` and does `cp -- /dev/stdin`, so the value
+   lands byte-for-byte with exactly one trailing newline.
+
+   For a genuinely multi-line secret an editor is fine — stdin is a tty,
+   so `$EDITOR` is honoured — just don't leave a trailing blank line:
+
+   ```bash
+   cd secrets
+   EDITOR=nano RULES=./secrets.nix \
      nix run github:ryantm/agenix -- -e my-secret.age -i ~/.ssh/id_ed25519
    ```
 
@@ -352,21 +383,29 @@ prefix from every command below and just type `ragenix`.
 `david`'s password comes from `secrets/david-password.age`, which holds a
 **crypt hash** — not a plaintext password.
 
-```bash
-# 1. Generate the hash
-nix shell nixpkgs#mkpasswd --command mkpasswd -m yescrypt
+One command. It prompts for the new password, hashes it, and pipes the
+hash straight into the encrypted file — you never see it, never paste it,
+and no editor gets a chance to mangle it:
 
-# 2. Replace the file's entire contents with that one $y$… line
-EDITOR=nano RULES=secrets/secrets.nix \
-  nix run github:ryantm/agenix -- -e david-password.age -i ~/.ssh/id_ed25519
+```bash
+cd secrets
+nix shell nixpkgs#mkpasswd --command mkpasswd -m yescrypt \
+  | RULES=./secrets.nix nix run github:ryantm/agenix -- -e david-password.age -i ~/.ssh/id_ed25519
 ```
 
-> **The file must end with exactly one newline — no blank line after the
-> hash.** NixOS reads `hashedPasswordFile` and applies a single Perl
-> `chomp`, which strips one trailing `\n` and no more. Leave two and the
-> surviving newline gets written *into* the `/etc/shadow` field, which
-> silently mangles the record: no password will ever match, with no error
-> anywhere. Editors add that second newline very easily. Check with:
+`Files …/david-password.age.before and …/david-password.age differ` is
+agenix's **success** message — it's how the tool reports that the content
+changed and it re-encrypted. The failure message is the opposite:
+`david-password.age wasn't changed, skipping re-encryption`.
+
+> **Don't hand-edit this one.** The file must end with exactly one
+> newline. NixOS reads `hashedPasswordFile` and applies a single Perl
+> `chomp` (`update-users-groups.pl:243`), which strips one trailing `\n`
+> and no more. Leave two — which every editor does by default — and the
+> surviving newline is written *into* the `/etc/shadow` password field,
+> mangling the record. No password will ever match, and nothing logs an
+> error anywhere. The pipe form above avoids this entirely. To check an
+> existing secret:
 >
 > ```bash
 > nix shell nixpkgs#age --command age -d -i ~/.ssh/id_ed25519 \
@@ -392,8 +431,8 @@ clone the agenix hash always wins.
 ### Rekey after changing recipients
 
 ```bash
-EDITOR=nano RULES=secrets/secrets.nix \
-  nix run github:ryantm/agenix -- --rekey -i ~/.ssh/id_ed25519
+cd secrets
+RULES=./secrets.nix nix run github:ryantm/agenix -- --rekey -i ~/.ssh/id_ed25519
 ```
 
 The `githooks/pre-commit` hook does this automatically — but *only* when

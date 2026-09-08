@@ -245,9 +245,12 @@ decrypt secrets on its very first boot. Do this if the profile needs
 ssh-keygen -t ed25519 -N "" -f /tmp/newhost-ssh-host-key
 cat /tmp/newhost-ssh-host-key.pub          # → paste into secrets/secrets.nix
 
-# Re-encrypt every secret for the new recipient list (from the repo root):
-EDITOR=nano RULES=secrets/secrets.nix \
-  nix run github:ryantm/agenix -- --rekey -i ~/.ssh/id_ed25519
+# Re-encrypt every secret for the new recipient list. Run this from the
+# secrets/ directory — agenix resolves paths relative to your CWD, and
+# from the repo root it reports "wasn't created" for every secret.
+cd secrets
+RULES=./secrets.nix nix run github:ryantm/agenix -- --rekey -i ~/.ssh/id_ed25519
+cd ..
 
 # Stage the key for nixos-anywhere to inject:
 mkdir -p /tmp/newhost-extra-files/etc/ssh
@@ -268,8 +271,8 @@ just can't read secrets until you've done it. Install first, then:
 
 ```bash
 ssh-keyscan <target-ip> | grep ed25519     # → paste into secrets/secrets.nix
-EDITOR=nano RULES=secrets/secrets.nix \
-  nix run github:ryantm/agenix -- --rekey -i ~/.ssh/id_ed25519
+cd secrets
+RULES=./secrets.nix nix run github:ryantm/agenix -- --rekey -i ~/.ssh/id_ed25519
 ```
 
 …and rebuild the host so it picks up the re-encrypted secrets. With no
