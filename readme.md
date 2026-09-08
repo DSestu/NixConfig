@@ -361,6 +361,18 @@ EDITOR=nano RULES=secrets/secrets.nix \
   nix run github:ryantm/agenix -- -e david-password.age -i ~/.ssh/id_ed25519
 ```
 
+> **The file must end with exactly one newline — no blank line after the
+> hash.** NixOS reads `hashedPasswordFile` and applies a single Perl
+> `chomp`, which strips one trailing `\n` and no more. Leave two and the
+> surviving newline gets written *into* the `/etc/shadow` field, which
+> silently mangles the record: no password will ever match, with no error
+> anywhere. Editors add that second newline very easily. Check with:
+>
+> ```bash
+> nix shell nixpkgs#age --command age -d -i ~/.ssh/id_ed25519 \
+>   secrets/david-password.age | wc -l    # must print 1, not 2
+> ```
+
 Then rebuild. **On an impermanent machine that isn't enough:** the live
 `/etc/shadow` is restored from `/nix/persist/etc/shadow` on every boot,
 so the persisted copy wins over your new secret. Either run `passwd` on
