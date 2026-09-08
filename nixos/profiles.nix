@@ -38,9 +38,10 @@ in {
       # value, but you must rename when you copy this entry.
       hostname = "REPLACE-ME";
       hypervisor = "none";
-      # Bare-metal impermanence is currently unwired — see SPEC.md
-      # Phase 4. Leave false until wipe-root.nix + the btrfs disko
-      # subvolume layout land on a real target.
+      # Left off in the skeleton so a fresh copy installs predictably.
+      # Flip to true once the copy imports the btrfs UEFI disko layout
+      # (single-disk-uefi.nix) — that's what wipe-root.nix expects. The
+      # flat ext4 BIOS layout has no @blank to roll back from.
       impermanence = false;
       extraHomeImports = [gamingHomeImport];
     };
@@ -65,8 +66,9 @@ in {
     // {
       hostname = "nixos-vbox";
       hypervisor = "none";
-      # See _template-bare-metal note. Flip back to true once wipe-
-      # root + btrfs subvols have been verified on real bare metal.
+      # Deliberately off: this guest's host folder ships its own
+      # hardware-configuration.nix and GRUB-EFI override rather than
+      # the btrfs subvolume layout wipe-root.nix needs.
       impermanence = false;
     };
 

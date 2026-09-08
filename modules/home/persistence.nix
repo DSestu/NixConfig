@@ -59,6 +59,14 @@
       ".config/Code/User"
       ".config/Cursor/User"
 
+      # --- T3 Code (projects, threads, pairing credentials) ---
+      # Matches `--base-dir` in modules/home/t3code.nix; without this the
+      # funnel URL demands a fresh pairing token after every boot.
+      {
+        directory = ".local/share/t3code";
+        mode = "0700";
+      }
+
       # --- Claude Code (auth, settings, plugins, MCP, skills, history) ---
       {
         directory = ".claude";

@@ -2,7 +2,8 @@
 # Build the disko btrfs image for the `nixos-vm-bare-test` profile,
 # boot it in qemu, and exercise the wipe-root behavior.
 #
-# This is the verification harness for SPEC.md Phase 4. It tests the
+# This is the verification harness for the bare-metal impermanence
+# path (see "The impermanence model" in CONTRIBUTING.md). It tests the
 # *exact* code path that runs on real bare metal — wipe-root.nix's
 # initrd service, the btrfs subvolume layout, and the
 # environment.persistence map — without needing real hardware.

@@ -3,13 +3,13 @@
   # legacy-firmware targets — VirtualBox VMs created without "Enable EFI"
   # (the default), older bare metal without UEFI, etc.
   #
-  # Same impermanence-friendly properties as `single-disk-uefi.nix`:
-  #
   #   - 1 MiB BIOS-boot partition for GRUB stage 2 (no FS, just a marker).
   #   - `/` is a single ext4 partition; `/boot` lives on it (GRUB doesn't
-  #     need a separate boot partition on BIOS). The wipe-root service
-  #     preserves top-level `boot` and `nix`, so the bootloader and
-  #     `/nix/persist` survive every reboot.
+  #     need a separate boot partition on BIOS).
+  #
+  # NOT usable with `impermanence = true`: this is a flat ext4 layout
+  # with no btrfs subvolumes, so `wipe-root.nix` has no `@blank` to roll
+  # `@` back from. Use `single-disk-uefi.nix` for impermanent hosts.
   #
   # Override `disko.devices.disk.main.device` from the host folder if the
   # target's disk isn't `/dev/sda`.

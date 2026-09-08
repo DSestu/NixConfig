@@ -7,7 +7,9 @@ many profiles; HM vs NixOS split; impermanence is a property of the
 running system; disko is opt-in via the host folder). Don't violate
 those principles without asking.
 
-For active work and remediation scope, see `SPEC.md`.
+Read `readme.md` for the feature surface and the day-to-day commands
+(profiles, pinning, secrets, VMs, impermanence); long-form runbooks are
+under `docs/`.
 
 ## Running Nix commands — always via a subagent
 
@@ -88,5 +90,7 @@ pattern. Read on demand; sync after significant work.
 
 - Never re-enable root SSH login or SSH password authentication.
 - Never land an `impermanence = true` profile without a working wipe
-  mechanism (the bug `SPEC.md` exists to prevent).
+  mechanism. On bare metal that means the btrfs UEFI disko layout
+  (`@blank` is what `wipe-root.nix` rolls back from); verify with
+  `scripts/run-vm-bare-test.sh` before touching a real machine.
 - Ask before destructive git or destructive nix-store operations.

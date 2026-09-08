@@ -1,4 +1,7 @@
+# VM disk images (created on first run by scripts/run-vm-*.sh)
 nixos-vm.qcow2
 nixos-vm-headless.qcow2
+nixos-vm-bare-test.qcow2
+
 result
 .dmux/

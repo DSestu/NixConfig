@@ -1,782 +1,743 @@
-# Home Manager + NixOS Flake
+# NixConfig
+
+One flake, every machine. A bare-metal desktop, a couple of QEMU dev
+VMs, a VirtualBox guest, a WSL distro, and a plain Home Manager setup on
+a non-NixOS laptop all come out of this single repository — each one
+described by a handful of lines in a profile dictionary rather than its
+own copy-pasted config tree.
+
+Most of the interesting machines are **impermanent**: `/` is thrown away
+on every boot and rebuilt from the store, and only paths you've
+explicitly declared survive. That sounds dramatic; in practice it means
+the system can't accumulate mystery state, and anything that breaks is
+one reboot away from being gone.
+
+This file is the entry point. It explains how the repo is put together,
+what's in it, and the commands you actually type day to day. Longer
+one-time runbooks live in [`docs/`](#documentation-index).
+
+---
+
+## Contents
+
+- [How this repo works](#how-this-repo-works)
+  - [Four principles](#four-principles)
+  - [How a profile is assembled](#how-a-profile-is-assembled)
+  - [Repository map](#repository-map)
+- [The machines](#the-machines)
+- [Daily commands](#daily-commands)
+  - [Rebuilding](#rebuilding)
+  - [Maintenance](#maintenance)
+  - [Reloading Plasma after a rebuild](#reloading-plasma-after-a-rebuild)
+  - [Shell cheat sheet](#shell-cheat-sheet)
+- [Pinning a package version](#pinning-a-package-version)
+- [Secrets (agenix)](#secrets-agenix)
+- [Running the VMs](#running-the-vms)
+- [Impermanence in one page](#impermanence-in-one-page)
+- [Creating a new profile](#creating-a-new-profile)
+- [Installing a bare-metal machine](#installing-a-bare-metal-machine)
+- [Adding a module](#adding-a-module)
+- [Ephemeral shells: `ns`](#ephemeral-shells-ns)
+- [Dev and agent tooling](#dev-and-agent-tooling)
+- [Documentation index](#documentation-index)
+
+---
+
+## How this repo works
+
+### Four principles
+
+These four ideas explain nearly every layout decision in the repo.
+[`CONTRIBUTING.md`](CONTRIBUTING.md) covers them in depth.
+
+**1. One flake, many profiles.** Every machine is a *profile* — a small
+attrset in [`nixos/profiles.nix`](nixos/profiles.nix) saying what you
+want (hostname, hypervisor, impermanence yes/no, a few extras).
+[`nixos/lib/mk-profile.nix`](nixos/lib/mk-profile.nix) turns each entry
+into a real `nixosSystem`. `flake.nix` is just inputs and outputs glue.
+
+**2. NixOS modules and Home Manager modules are separate concerns, and
+the directory tree enforces it.** System-level config lives in
+`modules/nixos/`, user-level in `modules/home/`. A module belongs to
+exactly one of them. When a feature genuinely has both halves — fish, for
+instance — it goes in `modules/dual/` and detects which evaluator it's
+running under.
+
+**3. Impermanence is a property of the running system, not a
+filesystem.** It's a wipe mechanism plus a list of paths preserved under
+`/nix/persist`. Any disk layout works as long as `/nix` and `/boot`
+survive the wipe, which is why the same `impermanence = true` flag works
+on a tmpfs-rooted VM and on a btrfs bare-metal box.
+
+**4. Disko is opt-in through the host folder, not a flake flag.**
+`disko.nixosModules.default` is loaded into every profile but stays
+completely inert until a host folder imports one of the layouts in
+`nixos/disko/`. Declaring a disk layout is a per-machine decision, so it
+lives with the machine.
+
+### How a profile is assembled
+
+Each profile is built from five ingredients, in this order:
+
+| # | Ingredient | Where |
+|---|---|---|
+| 1 | `commonNixosModules` — the system baseline every profile gets | `flake.nix` |
+| 2 | `commonHomeImports` — the user baseline (`home.nix`) | `flake.nix` |
+| 3 | The host folder, auto-discovered by name: `default.nix` → NixOS, `home.nix` → Home Manager | `nixos/hosts/<profile>/` |
+| 4 | The impermanence flag — also pulls in `modules/home/persistence.nix`, and `wipe-root.nix` on bare metal | `nixos/lib/mk-profile.nix` |
+| 5 | `extraNixosImports` / `extraHomeImports` plus the module for `hypervisor` | `nixos/profiles.nix` |
+
+The fields you can set on a profile:
+
+| Field | Required | Default | Notes |
+|---|---|---|---|
+| `hostname` | yes | — | Becomes `networking.hostName` |
+| `hypervisor` | yes | — | `qemu`, `wsl`, or `none`. Anything else throws |
+| `graphics` | no | `true` | Only consumed by QEMU profiles |
+| `impermanence` | no | `false` | Wipes `/` on boot; see [Impermanence](#impermanence-in-one-page) |
+| `extraNixosImports` | no | `[]` | Setting this *replaces* what `sharedDesktopProfile` provided |
+| `extraHomeImports` | no | `[]` | |
+
+`sharedDesktopProfile` is sugar for "give me KDE Plasma", merged in with
+`// { … }`.
+
+### Repository map
+
+```text
+flake.nix                  inputs, outputs, overlays — glue only
+pins.nix                   package version pin table  → see Pinning
+home.nix                   Home Manager baseline
+configuration.nix          safety net: fails loudly if you rebuild non-flake
+
+nixos/
+  profiles.nix             ★ the profile dictionary — start here
+  base.nix                 system baseline: users, SSH, persistence, GC
+  lib/mk-profile.nix       profile attrset → nixosSystem
+  modules/                 profile-options, secrets, wipe-root
+  platforms/               vm-qemu.nix, wsl.nix
+  disko/                   single-disk-uefi.nix (btrfs), single-disk-bios.nix
+  hosts/<profile>/         per-machine config, auto-discovered by name
+
+modules/
+  home/                    Home Manager modules (dev, gaming, network, …)
+    dev/                   claude-code, cursor, dbhub, agent-sources, dmux
+  nixos/                   NixOS modules (KDE suite, …)
+  dual/                    works under both evaluators: fish.nix, ns/
+
+secrets/                   agenix: secrets.nix (recipients) + *.age
+scripts/                   VM launchers, appimage hash helper
+githooks/pre-commit        auto-rekeys secrets when recipients change
+docs/                      long-form runbooks and specs
+```
+
+---
+
+## The machines
+
+Everything below is a key in [`nixos/profiles.nix`](nixos/profiles.nix)
+and a valid `--flake .#<name>` target.
+
+| Profile | Hypervisor | Impermanent | What it's for |
+|---|---|:---:|---|
+| `nixos-desktop` | none | ✅ | The real bare-metal desktop. KDE + gaming |
+| `nixos-vm` | qemu | ✅ | Main QEMU dev VM. KDE + gaming |
+| `nixos-vm-headless` | qemu | ✅ | Headless QEMU VM — no KDE, no graphics |
+| `nixos-vm-bare-test` | none | ✅ | Harness that exercises the *bare-metal* wipe path inside QEMU |
+| `nixos-vbox` | none | ❌ | VirtualBox guest, installed via `nixos-anywhere` |
+| `nixos-wsl` | wsl | ❌ | The WSL distro |
+| `_template-bare-metal` | none | ❌ | **Skeleton. Never deploy it.** Copy it — see [Creating a new profile](#creating-a-new-profile) |
+
+A leading underscore means "skeleton only". There's also a Home
+Manager-only output, `homeConfigurations.david`, for the non-NixOS
+workstation.
+
+Two things worth knowing: the QEMU profiles have **no host folder at
+all** — their bootloader and filesystems come from
+`nixos/platforms/vm-qemu.nix` — and `nixos-vbox` has no OVA build path,
+because `nixos-anywhere` is the only supported way in.
+
+---
 
 ## Daily commands
 
-### Update packages
+### Rebuilding
+
+| Where you are | Command |
+|---|---|
+| Non-NixOS workstation (Home Manager only) | `home-manager switch --flake .#david` |
+| A NixOS machine, rebuilding itself | `sudo nixos-rebuild switch --flake .#<profile>` |
+| WSL | `nr` — the alias in `nixos/hosts/nixos-wsl/home/fish.nix` |
+| Pushing to a remote machine | `sudo nixos-rebuild switch --flake .#<profile> --target-host <user>@<host> --use-remote-sudo` |
+| Inside a QEMU VM (via the 9p share) | `sudo nixos-rebuild switch --flake /mnt/hmconfig#nixos-vm` |
+| Just checking it evaluates | `nix eval ".#nixosConfigurations.<profile>.config.system.build.toplevel.drvPath"` |
+
+Swap `switch` for `build` to dry-run without activating — that works
+with `--target-host` too, which is the polite way to test a remote
+change.
+
+### Maintenance
 
 ```bash
+# Update the nixpkgs input
 nix flake update nixpkgs
-```
 
-### Garbage collect
-
-```bash
+# Manual garbage collection (a weekly --delete-older-than 7d GC is
+# already declarative, in nixos/base.nix and home.nix)
 nix-collect-garbage -d
-```
 
-### Repair Nix store
-
-Use after a build is killed mid-write or if a build fails with
-`Invalid argument` / `path is missing` errors — the WSL `ext4.vhdx` can
-take damage from abrupt shutdowns and corrupt store paths. This
-verifies every path's contents against its hash and re-fetches anything
-broken.
-
-```bash
+# Repair the store. Reach for this after a build is killed mid-write, or
+# on "Invalid argument" / "path is missing" errors — the WSL ext4.vhdx
+# takes damage from abrupt Windows shutdowns.
 sudo nix-store --verify --check-contents --repair
-```
 
-Targeted variant if you already know the bad path:
-
-```bash
+# Targeted version, when you already know the bad path
 sudo nix-store --delete --ignore-liveness /nix/store/<hash>-<name>
-```
 
-Nix re-realises the path on the next build.
-
-### Export plasma settings
-
-```bash
+# Dump current Plasma settings as Nix
 nix run github:nix-community/plasma-manager
-```
 
-### Reload Plasma after a rebuild
-
-After `nixos-rebuild switch` writes new Plasma config (panels, shortcuts,
-KWin rules, KDED daemons, etc.), most components only reread their files
-at startup. Pick the smallest reload that covers what you changed —
-logging out should be a last resort.
-
-**Per-subsystem (no logout):**
-
-```bash
-# KWin: window rules, shortcuts, compositor settings
-qdbus org.kde.KWin /KWin reconfigure
-
-# Plasma shell: panels, widgets, applets
-systemctl --user restart plasma-plasmashell.service
-# Old-school equivalent if the unit is missing:
-kquitapp6 plasmashell ; kstart plasmashell
-
-# KDED daemons (notifications, power, kscreen, …)
-kquitapp6 kded6 ; kded6 &
-
-# Service menus / .desktop entries
-kbuildsycoca6 --noincremental
-
-# Global keybindings only
-qdbus org.kde.kglobalaccel /kglobalaccel \
-  org.kde.KGlobalAccel.reloadConfig
-```
-
-**Covers ~90% of edits:**
-
-```bash
-qdbus org.kde.KWin /KWin reconfigure
-systemctl --user restart plasma-plasmashell.service
-```
-
-**Full reset:** log out and back in. Required for changes to display
-managers, autostart entries, session env vars, or
-`~/.config/plasma-localerc`.
-
-**Change isn't taking effect at all?** Home Manager honors
-`backupFileExtension = "bak"` (set in `flake.nix`), so a pre-existing
-config gets renamed instead of overwritten. If you see
-`~/.config/plasmashellrc.bak` next to a stale `plasmashellrc`, HM
-created the bak on the *first* deploy and has been refusing to clobber
-the live file since. Delete the live file and re-run
-`nixos-rebuild switch`.
-
-### Refresh AppImage hash
-
-Compute latest SRI hash:
-
-```bash
+# Refresh an AppImage hash
 ./scripts/update-appimage-hash.sh "https://example.com/MyApp-x86_64.AppImage"
+./scripts/update-appimage-hash.sh "https://example.com/MyApp-x86_64.AppImage" \
+  --replace modules/home/gaming.nix "sha256-OLD_HASH"
+
+# Enable the secrets auto-rekey hook (once per clone)
+git config core.hooksPath githooks
 ```
 
-Compute and replace an existing hash in a file:
+Run `checks` in any shell for a health report: git identity, `gh auth`,
+`nixos-anywhere` on PATH, the origin remote, your SSH key and agent,
+and whether tailscaled is up and logged in as the expected account.
+
+### Reloading Plasma after a rebuild
+
+`nixos-rebuild switch` writes new Plasma config, but most components
+only reread their files at startup. Pick the smallest reload that covers
+what you changed — logging out is the last resort.
 
 ```bash
-./scripts/update-appimage-hash.sh "https://example.com/MyApp-x86_64.AppImage" --replace modules/home/gaming.nix "sha256-OLD_HASH"
+# Covers ~90% of edits:
+qdbus org.kde.KWin /KWin reconfigure                  # KWin: rules, shortcuts, compositor
+systemctl --user restart plasma-plasmashell.service   # panels, widgets, applets
+
+# More surgical options:
+kquitapp6 kded6 ; kded6 &                             # notifications, power, kscreen
+kbuildsycoca6 --noincremental                         # service menus, .desktop entries
+qdbus org.kde.kglobalaccel /kglobalaccel org.kde.KGlobalAccel.reloadConfig
 ```
 
-## WSL host setup (run once)
-
-If you build from WSL on Windows, do this setup before the first build.
-Skipping it produces a pathological failure mode: `cptofs` (the tool
-that copies the Nix closure into the raw OVA disk image) pegs one CPU
-at 99% for hours instead of finishing in minutes, because Windows
-antivirus is scanning every write into the WSL `ext4.vhdx`.
-
-### 1. Confirm KVM is exposed to WSL
-
-Inside WSL:
-
-```bash
-ls -la /dev/kvm
-```
-
-Expect a character device with `crw-rw-rw-` permissions. If it's
-missing, enable nested virtualization on the Windows side (PowerShell
-as Administrator):
-
-```powershell
-dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
-wsl --update
-wsl --shutdown
-```
-
-Reboot if BIOS Intel VT-x / AMD-V is disabled.
-
-### 2. Locate every WSL distro's `ext4.vhdx`
-
-`wsl --import`-style distros (NixOS-WSL most commonly) live wherever
-you placed them at import time, not under `AppData\Local\Packages`.
-List them all:
-
-```powershell
-Get-ChildItem HKCU:\Software\Microsoft\Windows\CurrentVersion\Lxss |
-  ForEach-Object { Get-ItemProperty $_.PSPath } |
-  Select-Object DistributionName, BasePath
-```
-
-Note every `BasePath` — there's an `ext4.vhdx` inside each. Also catch
-the Microsoft Store distros:
-
-```powershell
-(Get-ChildItem $env:USERPROFILE\AppData\Local\Packages -Filter ext4.vhdx -Recurse).FullName
-```
-
-Keep the full list of paths handy for the next two steps.
-
-### 3. Exclude WSL from Windows Defender
-
-PowerShell as Administrator. Repeat the first `Add-MpPreference` line
-once per `BasePath` from step 2:
-
-```powershell
-# Per-distro VHDX paths — highest impact:
-Add-MpPreference -ExclusionPath "C:\Path\To\Distro\ext4.vhdx"
-# ...one line per distro.
-
-# Catch-all for Store-installed distros and live filesystem views:
-Add-MpPreference -ExclusionPath "$env:USERPROFILE\AppData\Local\Packages"
-Add-MpPreference -ExclusionPath "\\wsl$"
-Add-MpPreference -ExclusionPath "\\wsl.localhost"
-
-# Process exclusions:
-Add-MpPreference -ExclusionProcess "wsl.exe"
-Add-MpPreference -ExclusionProcess "wslservice.exe"
-Add-MpPreference -ExclusionProcess "wslhost.exe"
-Add-MpPreference -ExclusionProcess "vmwp.exe"
-Add-MpPreference -ExclusionProcess "vmcompute.exe"
-```
-
-Verify:
-
-```powershell
-Get-MpPreference | Select-Object -ExpandProperty ExclusionPath
-Get-MpPreference | Select-Object -ExpandProperty ExclusionProcess
-```
-
-### 4. Exclude WSL from any third-party antivirus
-
-Defender exclusions do nothing for third-party AV (Avast, AVG, Norton,
-McAfee, Kaspersky, etc.). Add the same paths to whichever you have
-installed. For Avast specifically: Menu → Settings → General →
-Exceptions → add each `ext4.vhdx`, the `BasePath` parent dirs, and
-`\\wsl$`.
-
-Sanity check: pause AV shields for 10 minutes and run a build. If it
-suddenly flies, that AV is missing exclusions.
-
-### 5. Configure WSL2 resources and networking
-
-Create `C:\Users\<you>\.wslconfig` on the Windows side:
-
-```ini
-[wsl2]
-memory=24GB
-processors=12
-swap=8GB
-networkingMode=mirrored
-```
-
-Tune memory/processors to leave Windows ~8 GB and a couple of cores.
-`networkingMode=mirrored` requires WSL ≥ 2.0.0 (`wsl --version` to
-check). It avoids substituter hangs caused by WSL's default NAT.
-
-Apply:
-
-```powershell
-wsl --shutdown
-```
-
-Reopen the WSL shell. Inside WSL, verify:
-
-```bash
-nproc
-free -h
-```
-
-### 6. Confirm `/nix` is on real ext4
-
-Inside WSL:
-
-```bash
-df -h /nix/store
-mount | grep '/nix'
-```
-
-The `Filesystem` column must be a real block device (`/dev/sdX`), not
-`drvfs` or a Windows path. If `/nix` is on a Windows path you'll pay
-10–100× penalties on every store operation; move the distro or
-reinstall it inside the Linux filesystem before going further.
-
-## VM workflows
-
-VM targets reuse the same base machine configuration as real-machine targets; only hypervisor-specific modules differ.
-
-### QEMU GUI
-
-Grab keyboard with `ctrl + alt + g`.
-
-```bash
-./scripts/run-vm-gui.sh
-```
-
-### QEMU headless
-
-```bash
-./scripts/run-vm-headless.sh
-```
-
-## Remote deployment
-
-### Local -> remote update (`nixos-rebuild`)
-
-Run from this repo on your local machine:
-
-```bash
-sudo nixos-rebuild switch --flake .#<profile-name> --target-host <user>@<remote-host> --use-remote-sudo
-```
-
-Example:
-
-```bash
-sudo nixos-rebuild switch --flake .#nixos-vm --target-host david@192.168.1.50 --use-remote-sudo
-```
-
-Optional pre-check build:
-
-```bash
-sudo nixos-rebuild build --flake .#<profile-name> --target-host <user>@<remote-host> --use-remote-sudo
-```
-
-### Remote install/reprovision (`nixos-anywhere`)
-
-Use this for a clean first install (or full reprovision) of any flake
-profile onto a remote machine — bare metal, a fresh VirtualBox VM, a
-cloud VM, anything you can boot from an ISO and SSH into. The target
-boots the official NixOS minimal ISO, your local machine pushes the
-install over SSH. No OVA, no `cptofs`, no image-build pipeline involved.
-
-**WARNING:** destructive — `nixos-anywhere` repartitions the target disk.
-
-`nixos-anywhere` is already in home-manager via
-`modules/home/deployment.nix`. If `which nixos-anywhere` returns
-nothing, run `home-manager switch --flake .#david` first.
-
-#### 1. Get the NixOS minimal ISO onto the target
-
-Download `nixos-minimal-*-x86_64-linux.iso` from
-<https://nixos.org/download/> (or build one with
-`nix build nixpkgs#nixos-minimal`). Boot the target from it:
-
-- **Bare metal**: `dd if=nixos-minimal-*.iso of=/dev/sdX bs=4M status=progress`
-  to a USB stick, plug in, boot from USB.
-- **Fresh VirtualBox VM**: VirtualBox UI → New → Linux / Other Linux
-  64-bit, ≥ 30 GB disk, 4–8 GB RAM, attach the ISO as the optical drive.
-  In *Settings → Network → Adapter 1*, set *Attached to* to **Bridged
-  Adapter** so WSL can reach the VM at a LAN IP. (Bridged unavailable?
-  Use NAT and add port-forward `Host 2222 → Guest 22`; then SSH to
-  `root@<windows-host-lan-ip>:2222` from WSL — not `127.0.0.1`, WSL2
-  has its own NAT.)
-- **Cloud VM**: most providers expose a NixOS minimal image directly.
-  Skip to step 2.
-
-#### 2. Get the target on the network
-
-The minimal ISO is a TTY environment — no GUI network applet, no
-NetworkManager. You configure networking by hand. Verify whether
-anything is up:
-
-```bash
-ip -4 addr show
-ping -c 3 1.1.1.1
-```
-
-If you already see an `inet` on `enp…`/`eth…`/`wlan…` and ping works,
-skip to step 3.
-
-**Wired Ethernet** — DHCP is automatic. If `ip` shows nothing on the
-wired interface:
-
-```bash
-sudo systemctl restart systemd-networkd
-```
-
-**Wi-Fi** — the minimal ISO ships `iwd` (since 23.05). Drop into the
-interactive shell:
-
-```bash
-iwctl
-[iwd]# device list                     # note the station, e.g. wlan0
-[iwd]# station wlan0 scan
-[iwd]# station wlan0 get-networks
-[iwd]# station wlan0 connect "<SSID>"  # prompts for passphrase
-[iwd]# exit
-```
-
-Re-check `ip -4 addr show` for the wlan IP.
-
-**USB tethering off your phone** — easiest. Plug a USB cable, enable
-USB tethering on the phone; a new `usb0`/`enp…u…` interface appears and
-DHCPs immediately. Same for "wired" tethering on iPhones. No Wi-Fi
-config needed.
-
-**DNS broken but ping by IP works** — drop a resolver:
-
-```bash
-echo 'nameserver 1.1.1.1' | sudo tee /etc/resolv.conf
-```
-
-#### 3. Enable SSH on the target
-
-The installer's `nixos` user has no password and `root` SSH with
-password is disabled by default. Pick one of:
-
-**Option A — password auth** (quickest, fine for a one-shot install):
-
-```bash
-sudo passwd                                                            # set root password
-sudo sed -i 's/^#*\s*PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
-sudo systemctl restart sshd
-```
-
-Sanity-check from WSL: `ssh root@<target-ip>` → log in with the
-password → `exit`.
-
-**Option B — public-key auth** (no password prompts during the
-nixos-anywhere run; preferred):
-
-On the target, set a password for the `nixos` user and start sshd:
-
-```bash
-sudo passwd nixos
-sudo systemctl start sshd
-```
-
-From WSL, copy your key over once:
-
-```fish
-ssh-copy-id nixos@<target-ip>            # uses the password you just set
-ssh-copy-id root@<target-ip>             # nixos-anywhere uses root by default
-```
-
-After this, `ssh root@<target-ip>` should drop straight to a shell.
-
-If you do this kind of install often, jump to step 7 — building a
-custom installer ISO with sshd and your key pre-baked turns this whole
-step into nothing.
-
-#### 4. Pick a partitioning strategy
-
-**Recommended: declarative partitioning with disko.** The flake already
-ships disko as an input and adds `disko.nixosModules.default` to
-`commonNixosModules` (see `flake.nix`). Two ready-made layouts live
-under `nixos/disko/`:
-
-- `nixos/disko/single-disk-uefi.nix` — GPT, 512 MiB ESP at `/boot`,
-  ext4 root at `/`. Pairs with systemd-boot. Use this for any UEFI
-  target (modern bare metal, VirtualBox VMs created with "Enable EFI"
-  ticked, most cloud images).
-- `nixos/disko/single-disk-bios.nix` — GPT with a 1 MiB BIOS-boot
-  partition + ext4 root. Pairs with GRUB on `/dev/sda`. Use this for
-  VirtualBox VMs created without "Enable EFI" (the default), or older
-  bare metal without UEFI firmware.
-
-Both are flat layouts (no LVM, no subvolumes, no swap) that pair with
-the QEMU `vm-qemu.nix` shape. Bare-metal impermanence (wipe-root on
-a disk-backed root) is not currently implemented — see SPEC.md
-Phase 4. Until then, bare-metal profiles run with
-`impermanence = false`.
-
-To install a profile onto a target, you don't write the host folder
-from scratch — copy the template instead:
-
-```bash
-cp -r nixos/hosts/_template-bare-metal nixos/hosts/<your-host>
-```
-
-Then copy the matching `_template-bare-metal` block in `flake.nix`
-(tagged `TEMPLATE — DO NOT EDIT, DO NOT DEPLOY`) to a new key with the
-same name as your folder, and set `hostname = "<your-host>"`. Tweak the
-copied `default.nix` to switch UEFI ↔ BIOS, override the disk device,
-or add host-specific bootloader/kernel/hardware tweaks. The leading
-underscore on the template signals "skeleton only — never deploy this
-key directly"; leave the template files untouched so they stay a clean
-reference.
-
-The copied `default.nix` already includes a `pathExists` guard for
-`hardware-configuration.nix`, so the flake evaluates fine before the
-hardware config exists. `nixos-anywhere` generates that file for you in
-step 5 below, the guard flips, and both files are imported on
-subsequent rebuilds.
-
-**Alternative: manual partitioning.** Skip the disko import and
-partition the target by hand before running `nixos-anywhere`. On the
-target:
-
-```bash
-parted /dev/sda -- mklabel gpt
-parted /dev/sda -- mkpart ESP fat32 1MiB 513MiB
-parted /dev/sda -- set 1 esp on
-parted /dev/sda -- mkpart primary 513MiB 100%
-mkfs.fat -F32 -L boot /dev/sda1
-mkfs.ext4 -L nixos /dev/sda2
-mount /dev/disk/by-label/nixos /mnt
-mkdir -p /mnt/boot
-mount /dev/disk/by-label/boot /mnt/boot
-```
-
-#### 5. Run `nixos-anywhere` from WSL
-
-With disko (step 4 declarative path):
-
-```fish
-nixos-anywhere \
-  --flake .#<profile-name> \
-  --generate-hardware-config nixos-generate-config nixos/hosts/<profile-name>/nixos/hardware-configuration.nix \
-  root@<target-ip>
-```
-
-Without disko (step 4 manual path):
-
-```fish
-nixos-anywhere \
-  --flake .#<profile-name> \
-  --no-disko \
-  --phases install,reboot \
-  --generate-hardware-config nixos-generate-config nixos/hosts/<profile-name>/nixos/hardware-configuration.nix \
-  root@<target-ip>
-```
-
-`--generate-hardware-config nixos-generate-config <path>` SSHes into the
-target, runs `nixos-generate-config`, and writes the result back into
-your flake checkout so the next rebuild has the right kernel modules,
-microcode, and root-FS UUID baked in.
-
-Either way, `nixos-anywhere` will:
-1. Build the system closure locally.
-2. Stream it to the target over SSH.
-3. Run `nixos-install` against the disko (or pre-mounted) layout.
-4. Reboot. The target comes back up as your flake profile.
-
-Total wall time on a warm `/nix/store`: 5–15 minutes.
-
-#### 6. After install
-
-The target is now a normal NixOS host running your profile. Log in as
-`david` with the password from `users.users.david.initialPassword`
-(`nixos` per `nixos/base.nix`). Change it with `passwd`. From this
-point on, treat the machine like any other remote — push updates with
-`nixos-rebuild`:
-
-```fish
-sudo nixos-rebuild switch --flake .#<profile-name> \
-  --target-host david@<target-ip> --use-remote-sudo
-```
-
-Commit the generated `hardware-configuration.nix`:
-
-```fish
-git add nixos/hosts/<profile-name>/nixos/hardware-configuration.nix
-git commit -m "Add hardware-configuration for <profile-name>"
-```
-
-Drop `--generate-hardware-config` from future `nixos-anywhere` runs —
-the committed file is the source of truth from now on.
-
-#### 7. Optional: bake a custom installer ISO
-
-If you do remote installs often, build a minimal ISO with sshd already
-on, your SSH key already trusted, and (optionally) Wi-Fi credentials
-already loaded — booting it is then the entire setup.
-
-Create `nixos/installer-iso.nix`:
-
-```nix
-{modulesPath, ...}: {
-  imports = [(modulesPath + "/installer/cd-dvd/installation-cd-minimal.nix")];
-
-  services.openssh.enable = true;
-  services.openssh.settings.PermitRootLogin = "prohibit-password";
-
-  users.users.root.openssh.authorizedKeys.keys = [
-    "ssh-ed25519 AAAA... david@wsl"   # your WSL public key
-  ];
-
-  # Optional: pre-load Wi-Fi credentials so it auto-connects.
-  networking.wireless.enable = true;
-  networking.wireless.networks."<SSID>".psk = "<passphrase>";
-}
-```
-
-Wire it as a flake output (in `flake.nix`, alongside the
-`nixosConfigurations` block):
-
-```nix
-nixosConfigurations.installer = nixpkgs.lib.nixosSystem {
-  inherit system;
-  modules = [./nixos/installer-iso.nix];
-};
-```
-
-Build the ISO:
-
-```fish
-nix build .#nixosConfigurations.installer.config.system.build.isoImage
-ls result/iso/                       # nixos-*.iso
-```
-
-Write to USB (`dd if=result/iso/nixos-*.iso of=/dev/sdX bs=4M
-status=progress`) or attach as the optical drive in VirtualBox. After
-boot, the host has an IP, sshd up, and your key trusted — go straight
-to step 5 (`nixos-anywhere root@<ip>`).
-
-#### Troubleshooting
-
-- **`nixos-anywhere` errors about missing `disko.devices`** → either
-  finish step 4 (declarative) or pass `--no-disko --phases install,reboot`
-  after manual partitioning.
-- **No IP on the target** → step 2 wasn't applied. Wired: re-run
-  `sudo systemctl restart systemd-networkd` and check the cable. Wi-Fi:
-  `iwctl` → `station wlan0 connect "<SSID>"`. Quickest fallback: USB-
-  tether off your phone.
-- **`ping 1.1.1.1` works but `ping nixos.org` fails** → DNS isn't set.
-  `echo 'nameserver 1.1.1.1' | sudo tee /etc/resolv.conf`.
-- **`Permission denied (publickey,password)`** → `sudo passwd` wasn't
-  run on the target, sshd isn't running, or `PermitRootLogin` is still
-  `prohibit-password`. Re-do step 3 (Option A flips the sshd_config
-  line for you).
-- **`Failed to find an installation root`** (manual-partition path) →
-  you forgot `mount /dev/disk/by-label/nixos /mnt` (and `/mnt/boot`).
-- **First boot stops in stage 1 / "no init found"** → bootloader
-  doesn't match the firmware. UEFI VM: `boot.loader.systemd-boot.enable
-  = true`. BIOS VM (VirtualBox default): `boot.loader.grub.device =
-  "/dev/sda"`. Fix the host module, re-run `nixos-anywhere`.
-- **`hardware-configuration.nix` keeps regenerating on every reinstall**
-  → drop `--generate-hardware-config` after the first install. Commit
-  the file; future runs read it from the flake.
-- **WSL can't reach the target's IP** → for VirtualBox + bridged
-  adapter, both the Windows host and the VM must be on the same LAN;
-  WSL2 with `networkingMode=mirrored` (see `.wslconfig` in step 5 of
-  the WSL host setup section) shares that LAN. Without mirrored
-  networking, use NAT + port-forward to the *Windows host's* LAN IP.
-
-## Per-profile host configuration
-
-Each profile can have a matching folder at `nixos/hosts/<profile-name>/`.
-If a `default.nix` exists there, `mkProfile` imports it automatically — no
-flake edits required. This is the place for host-specific modules that
-don't belong in the shared tree (hardware quirks, bootloader overrides,
-partitions, filesystems, custom kernel params, etc.).
-
-Layout:
-
-```text
-nixos/hosts/
-  _template-bare-metal/      # SKELETON — copy, don't edit. See below.
-    default.nix              # NixOS-side host entry (auto-imported)
-    home.nix                 # HM-side host entry (auto-imported)
-    nixos/                   # NixOS sub-modules used only by this host
-    home/                    # HM sub-modules used only by this host
-  nixos-desktop/
-    default.nix              # auto-imported for `nixos-desktop`
-    nixos/
-      hardware-configuration.nix  # generated on the target, see below
-```
-
-`mkProfile` looks up both files independently: `default.nix` is added to
-the NixOS module list, `home.nix` is added to the Home Manager imports.
-Drop either (or both) into a host folder to add per-profile config
-without touching `flake.nix`.
-
-VM profiles don't need a host folder — their bootloader/filesystems come
-from `nixos/platforms/vm-qemu.nix`.
-
-### Starting from the bare-metal template
-
-`nixos/hosts/_template-bare-metal/` (paired with the `_template-bare-metal`
-entry in `flake.nix`) is the canonical starting point for any new
-bare-metal profile. The leading underscore signals "skeleton only —
-never deploy this key directly". Both the host folder and the flake
-entry carry header comments explaining what's wired in (KDE, gaming,
-impermanence, disko UEFI layout, hardware-config `pathExists` guard) and
-the customization points (UEFI ↔ BIOS layout, disk device override,
-where to add per-host kernel/bootloader tweaks). Copy both — directory
-and flake entry — to a new name and customize the copy; leave the
-template files alone so they stay a clean reference.
-
-### Bare-metal: generating `hardware-configuration.nix`
-
-Bare-metal profiles (`hypervisor = "none"`) need a per-host
-`hardware-configuration.nix` with the machine's root-FS identifier,
-kernel modules, CPU microcode, and bootloader device. That file cannot
-be known ahead of time; it must be generated on the target.
-
-1. Boot the target from a NixOS install ISO, partition/format, and mount
-   the root at `/mnt` (or SSH into an already-running NixOS install).
-
-2. Generate the hardware config:
-
-   ```bash
-   # during install
-   sudo nixos-generate-config --root /mnt --show-hardware-config
-
-   # or on a running system
-   sudo nixos-generate-config --show-hardware-config
+A full logout is genuinely required for display managers, autostart
+entries, session environment variables and `~/.config/plasma-localerc`.
+
+**Change not taking effect at all?** Home Manager runs with
+`backupFileExtension = "bak"`, so it *renames* a pre-existing config
+instead of overwriting it. A `~/.config/plasmashellrc.bak` sitting next
+to a stale `plasmashellrc` means HM has been refusing to clobber the live
+file since the very first deploy. Delete the live file and re-switch.
+
+### Shell cheat sheet
+
+Fish is the login shell everywhere (root included). The greeting prints
+most of this, but here it is in writing.
+
+| Key | Does |
+|---|---|
+| `ctrl-f` | Browse user-defined functions |
+| `alt-a` | Browse aliases |
+| `ctrl-r` | Search history (fzf.fish) |
+| `ctrl-t` | Find files |
+| `ctrl-g` | Attach a tmux session (sesh picker; `ctrl-x` inside kills one) |
+| `**<tab>` | Glob suggestions |
+| `ctrl-b S` | Same session picker, from inside tmux |
+
+| Alias | Expands to |
+|---|---|
+| `l` / `la` / `ll` / `lt` | `eza` with sensible flags (`lt` = tree) |
+| `pc` | Run pre-commit on files changed vs `origin/master...HEAD` |
+| `checks` | `post_install_checks` — the health report above |
+| `dnw` | `diffnav --watch` |
+| `ghd` | `gh dash` |
+| `j` | zoxide jump (**not** `z` — that name was taken by a fish plugin) |
+
+---
+
+## Pinning a package version
+
+Sometimes nixpkgs moves a package somewhere you don't want to go.
+[`pins.nix`](pins.nix) is the single table of every version you're
+holding back: one entry per package, naming the nixpkgs commit that
+ships the version you want. `flake.nix` turns the table into one
+overlay, applied to both the Home Manager `pkgs` and every NixOS
+profile — so a pinned `foo` is pinned everywhere `pkgs.foo` appears.
+
+1. **Find the commit** that ships your version, at
+   [nixhub.io](https://www.nixhub.io) or
+   [lazamar.co.uk/nix-versions](https://lazamar.co.uk/nix-versions).
+
+2. **Add the entry** to `pins.nix`, with a comment saying *why* — future
+   you will want to know when the pin can be dropped:
+
+   ```nix
+   quarto = {
+     # 1.7.34 — 1.8.x ships a jog.lua filter that can't traverse
+     # pandoc's TableBody node, which breaks table rendering.
+     rev = "5d6bdbddb4695a62f0d00a3620b37a15275a5093";
+     hash = lib.fakeHash;
+   };
    ```
 
-3. Redirect the output into the host folder on your workstation and
-   commit it:
+3. **Let the build tell you the hash.** Rebuild with `lib.fakeHash` in
+   place; the mismatch error prints the real value. Paste it in. (If you
+   prefer to fetch it up front:
+   `nix-prefetch-url --unpack https://github.com/NixOS/nixpkgs/archive/<rev>.tar.gz`.)
 
-   ```bash
-   ssh <user>@<remote> 'sudo nixos-generate-config --show-hardware-config' \
-     > nixos/hosts/<profile-name>/nixos/hardware-configuration.nix
-   git add nixos/hosts/<profile-name>/nixos/hardware-configuration.nix
-   git commit -m "Add hardware-configuration.nix for <profile-name>"
+**This only pins backwards.** To get something *newer* than nixpkgs has,
+there's no commit to point at — use `overrideAttrs` at the use site
+instead. There are three precedents to copy from: `gh-stack` and the
+nixGL-wrapped `warp-terminal` in `modules/home/dev.nix`, and
+`code-cursor` in `flake.nix`.
+
+---
+
+## Secrets (agenix)
+
+Secrets are age-encrypted files committed to
+[`secrets/`](secrets/), each encrypted to a list of recipients in
+[`secrets/secrets.nix`](secrets/secrets.nix). Recipients are **SSH
+public keys** — one per machine (its host key) plus your user key, so a
+rekey can be driven from whichever machine you happen to be on. At boot,
+a NixOS host decrypts its secrets with its host key and drops the
+plaintext in `/run/agenix/<name>`.
+
+Currently in use: the login password hash, a Tailscale auth key, and a
+Cachix token.
+
+`ragenix` is on `PATH` on NixOS hosts, so you can drop the `nix run …`
+prefix from every command below and just type `ragenix`.
+
+### Add a secret
+
+1. Declare it with the hosts that may decrypt it, in `secrets/secrets.nix`:
+
+   ```nix
+   "my-secret.age".publicKeys = allHosts;
    ```
 
-4. Rebuild — locally to validate, then remotely to apply:
+2. Create it — this opens `$EDITOR`; paste the secret and save. Run from
+   the **repo root**, but note the filename is relative to `secrets.nix`,
+   not to the repo root:
 
    ```bash
-   nix eval ".#nixosConfigurations.<profile-name>.config.system.build.toplevel.drvPath"
-   sudo nixos-rebuild switch --flake .#<profile-name> \
-     --target-host <user>@<remote> --use-remote-sudo
+   EDITOR=nano RULES=secrets/secrets.nix \
+     nix run github:ryantm/agenix -- -e my-secret.age -i ~/.ssh/id_ed25519
    ```
 
-The `default.nix` in each host folder guards the hardware-config import
-with `builtins.pathExists`, so the flake keeps evaluating before the
-file has been produced (bare-metal profiles will still fail at build
-time with a clear `fileSystems`/`boot.loader` assertion — that's the
-signal to run step 2).
+3. Declare it in `nixos/modules/secrets.nix`, guarded so the flake still
+   evaluates on a checkout without it:
 
-## Performance notes
+   ```nix
+   (lib.mkIf (builtins.pathExists ../../secrets/my-secret.age) {
+     my-secret.file = ../../secrets/my-secret.age;
+   })
+   ```
 
-### KVM acceleration
+4. Use it as `config.age.secrets.my-secret.path` → `/run/agenix/my-secret`.
+   If a non-root process needs to read it, set `owner` and `mode` —
+   agenix defaults to `root:root 0400`.
 
-Without KVM, VM performance is typically 10-20x slower.
+5. Commit **both** `secrets/secrets.nix` and `secrets/my-secret.age`.
 
-Check membership:
+### Change your login password
+
+`david`'s password comes from `secrets/david-password.age`, which holds a
+**crypt hash** — not a plaintext password.
+
+```bash
+# 1. Generate the hash
+nix shell nixpkgs#mkpasswd --command mkpasswd -m yescrypt
+
+# 2. Replace the file's entire contents with that one $y$… line
+EDITOR=nano RULES=secrets/secrets.nix \
+  nix run github:ryantm/agenix -- -e david-password.age -i ~/.ssh/id_ed25519
+```
+
+Then rebuild. **On an impermanent machine that isn't enough:** the live
+`/etc/shadow` is restored from `/nix/persist/etc/shadow` on every boot,
+so the persisted copy wins over your new secret. Either run `passwd` on
+the machine itself (which persists correctly), or delete the frozen copy
+and reboot:
+
+```bash
+sudo rm /nix/persist/etc/shadow && sudo reboot
+```
+
+Two related notes. `root` deliberately keeps `initialPassword = "nixos"`
+— NixOS ships root locked, which turns a failed boot into an emergency
+shell nobody can log into. And `initialPassword` for `david` is only a
+fallback for a checkout where the `.age` file is missing; on a normal
+clone the agenix hash always wins.
+
+### Rekey after changing recipients
+
+```bash
+EDITOR=nano RULES=secrets/secrets.nix \
+  nix run github:ryantm/agenix -- --rekey -i ~/.ssh/id_ed25519
+```
+
+The `githooks/pre-commit` hook does this automatically — but *only* when
+`secrets/secrets.nix` is part of the commit. That's deliberate: age
+picks a fresh file key on every run, so rekeying on every commit would
+rewrite all the ciphertexts and fill history with noise. Enable it once
+per clone with `git config core.hooksPath githooks`; it needs `ragenix`
+on `PATH` and an identity at `~/.ssh/id_ed25519` (override with
+`$AGENIX_IDENTITY`).
+
+### Adding a new machine as a recipient
+
+For a machine that already exists, `cat /etc/ssh/ssh_host_ed25519_key.pub`,
+paste it into `secrets.nix`, rekey.
+
+For one you're about to install, you choose between pre-generating the
+host key so secrets work on first boot, or harvesting it afterwards —
+both paths are written out in
+[step 6 of the install runbook](docs/install-bare-metal.md#6-decide-how-the-host-key-is-handled).
+For a VM whose key is generated on first boot onto its qcow2:
+
+```bash
+ssh-keyscan -p 2222 localhost | grep ed25519    # → paste into secrets.nix, then rekey
+```
+
+---
+
+## Running the VMs
+
+```bash
+./scripts/run-vm-gui.sh          # nixos-vm, KDE desktop. ctrl+alt+g grabs the keyboard
+./scripts/run-vm-headless.sh     # nixos-vm-headless, console only
+```
+
+Both scripts build the VM and boot it. SSH is forwarded on **host port
+2222** → guest 22, and your Home Manager config directory is shared into
+the guest at `/mnt/hmconfig`, which is what makes
+`nixos-rebuild --flake /mnt/hmconfig#nixos-vm` work from inside.
+
+On first run the script creates the qcow2 and pre-formats it as ext4
+labelled `nixos`. That's necessary because these profiles put `/` on
+tmpfs and only `/nix` on disk, so nothing in the boot path would ever
+format it.
+
+Two rules about that disk file:
+
+- **To reset a VM, delete its `.qcow2`.** That's the whole procedure.
+- **Never add `-snapshot`.** It redirects every write to a temp file
+  discarded on exit, which silently breaks persistence — writes to
+  `/nix/persist` never reach the image, and you'd spend a while
+  wondering why impermanence "isn't working".
+
+### Testing the bare-metal wipe path
+
+`nixos-vm-bare-test` boots the *bare-metal* btrfs rollback inside QEMU,
+so you can verify the real wipe mechanism without a real machine.
+
+```bash
+./scripts/run-vm-bare-test.sh              # build if needed, then boot
+./scripts/run-vm-bare-test.sh --fresh      # delete the image and rebuild
+./scripts/run-vm-bare-test.sh --boot-only  # skip the build
+```
+
+The verification recipe, using the canary unit baked into the host:
+
+1. First boot (autologin as `david`): `journalctl -u wipe-canary-report`
+   should report both canaries absent.
+2. Plant them and shut down:
+
+   ```bash
+   sudo touch /root-canary
+   sudo touch /nix/persist/persist-canary
+   touch ~/home-canary
+   sudo poweroff
+   ```
+
+3. Second boot: the report should say `/root-canary` is gone (so `@` was
+   wiped) and `persist-canary` survived. `ls ~/home-canary` should
+   **fail** — `/home` is wiped strictly.
+
+### Logging in
+
+`david`, with the password from the agenix secret. `root` / `nixos` at
+the console is the escape hatch. The console keymap is **`fr`** (AZERTY),
+which is the first thing to suspect when a password you're sure about
+gets rejected.
+
+### KVM
+
+Without KVM everything runs 10–20× slower:
 
 ```bash
 groups | grep -q kvm && echo "KVM enabled" || echo "You need to join the kvm group"
+sudo usermod -aG kvm david      # then log out and back in
 ```
 
-If needed:
+On WSL, see [WSL host setup](docs/wsl-host-setup.md#1-confirm-kvm-is-exposed-to-wsl).
+
+---
+
+## Impermanence in one page
+
+When a profile sets `impermanence = true`, `/` does not survive a
+reboot. Everything that matters is declared, and anything undeclared is
+transient by construction.
+
+**How the wipe happens** depends on the platform:
+
+- **QEMU VMs** — `/` *is* a tmpfs. There's nothing to wipe; each boot
+  starts empty, with only `/nix` on the disk image.
+- **Bare metal** — [`nixos/modules/wipe-root.nix`](nixos/modules/wipe-root.nix)
+  runs in the stage-1 initrd, before `/` is mounted: it moves the old
+  `@` subvolume aside into `@old_roots/<timestamp>` and snapshots a
+  pristine `@` from the never-written `@blank`. Old roots are kept for
+  **30 days**, which is your recovery window — from a rescue boot,
+  `btrfs subvolume snapshot @old_roots/<ts> @` puts one back. This loads
+  automatically when `impermanence = true` and `hypervisor = "none"`.
+
+**What survives** is declared in exactly two places, and adding a path
+means editing one of them — never writing a new module:
+
+- System paths → `environment.persistence` in
+  [`nixos/base.nix`](nixos/base.nix). Machine ID and SSH host keys
+  (without them, every boot looks like a brand-new host), NetworkManager
+  connections, Bluetooth pairings, `/var/log`, `/var/lib/nixos`.
+- User paths → `home.persistence` in
+  [`modules/home/persistence.nix`](modules/home/persistence.nix). SSH and
+  GPG keys, your `github` and `Documents` directories, shell history
+  (fish, atuin, zoxide), direnv approvals, browser profiles, Steam,
+  editor state, `.claude`.
+
+**`/etc/shadow` is a special case.** It's copied rather than
+bind-mounted, because both NixOS' user-activation script and `passwd`
+replace the file via atomic `rename(2)` — which unlinks the inode a bind
+mount points at, so writes would never reach `/nix/persist`. Instead: an
+activation script restores the persisted copy over the freshly generated
+one, and a systemd path unit watching `PathModified` copies it back out
+whenever it changes, with a shutdown hook as a safety net. The
+consequence to remember is the one in
+[Change your login password](#change-your-login-password): the persisted
+copy beats a changed secret.
+
+---
+
+## Creating a new profile
+
+1. **Copy the template folder** (never edit it in place):
+
+   ```bash
+   cp -r nixos/hosts/_template-bare-metal nixos/hosts/my-laptop
+   ```
+
+2. **Copy the template entry** in `nixos/profiles.nix` to a key with
+   exactly the same name as the folder — `mkProfile` matches them by
+   name:
+
+   ```nix
+   my-laptop =
+     sharedDesktopProfile
+     // {
+       hostname = "my-laptop";
+       hypervisor = "none";
+       impermanence = false;
+       extraHomeImports = [gamingHomeImport];
+     };
+   ```
+
+3. **Edit your copy** of `default.nix`: pick a disk layout (UEFI/btrfs or
+   BIOS/ext4), override the disk device if it isn't `/dev/sda`, add any
+   hardware quirks. Anything longer than a few lines goes in a file under
+   `nixos/hosts/my-laptop/nixos/` and gets imported from there.
+
+4. **Check it evaluates:**
+
+   ```bash
+   nix eval ".#nixosConfigurations.my-laptop.config.system.build.toplevel.drvPath"
+   ```
+
+   A bare-metal profile will still fail at *build* time with a
+   `fileSystems` / `boot.loader` assertion until
+   `hardware-configuration.nix` exists. That's expected — it's generated
+   during the install.
+
+A QEMU or WSL profile doesn't need a host folder at all; the platform
+module supplies the filesystems and bootloader.
+
+---
+
+## Installing a bare-metal machine
+
+The target boots the official NixOS minimal ISO; your workstation pushes
+the entire install over SSH with `nixos-anywhere`. **This repartitions
+the target disk.**
+
+The happy path, once the profile from
+[Creating a new profile](#creating-a-new-profile) exists:
 
 ```bash
-sudo usermod -aG kvm david
+# On the target, booted from nixos-minimal-*.iso:
+ip -4 addr show                 # confirm it has an address
+sudo passwd                     # set a root password
+sudo sed -i 's/^#*\s*PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+sudo systemctl restart sshd
+
+# From this repo on your workstation:
+nixos-anywhere \
+  --flake .#my-laptop \
+  --generate-hardware-config nixos-generate-config nixos/hosts/my-laptop/nixos/hardware-configuration.nix \
+  root@<target-ip>
+
+# Afterwards — commit what it generated for you:
+git add nixos/hosts/my-laptop/nixos/hardware-configuration.nix
+git commit -m "Add hardware-configuration for my-laptop"
 ```
 
-Then log out and back in.
+5–15 minutes on a warm `/nix/store`. From then on it's an ordinary
+remote: `nixos-rebuild switch --flake .#my-laptop --target-host …`.
 
-## Adding a new module
+**[→ Full runbook: docs/install-bare-metal.md](docs/install-bare-metal.md)**
+— disk layouts in detail, TTY networking (Wi-Fi via `iwctl`, USB
+tethering), VirtualBox setup, key-based SSH, how the host key and agenix
+interact, manual partitioning, baking a custom installer ISO, and a
+troubleshooting table.
 
-The two evaluators (Home Manager and NixOS) are kept in separate trees:
+---
 
-- `modules/home/` — Home Manager modules (user config/packages, dotfiles,
-  user-side persistence, etc.).
-- `modules/nixos/` — NixOS modules (system services, kernel, networking,
-  desktop suites, etc.).
+## Adding a module
 
-A module belongs to exactly one of these. There is no shared/dual-context
-tree any more — if a feature has both a system-side and a user-side, ship
-two files (one in each folder) and import them from their respective
-baselines.
+Decide which evaluator owns it, then decide how widely it applies.
 
-The mental model is minimal: every profile gets a fixed baseline, and each
-profile can append its own extras via two lists — `extraNixosImports` and
-`extraHomeImports`. There are no flags or toggles.
+**Which tree:**
 
-### 1) Create module file
+- `modules/home/` — user config, packages, dotfiles
+- `modules/nixos/` — system services, kernel, desktop suites
+- `modules/dual/` — genuinely both halves of one feature, in one module
+  that detects its evaluator (see `fish.nix`, `ns/`)
+- `nixos/hosts/<name>/{nixos,home}/` — host-specific enough that the
+  shared trees shouldn't carry it (fan curves, dual-boot GRUB, hardware
+  quirks)
 
-Pick the right tree and create the file there. For a Home Manager module:
+**How to wire it:**
 
-```bash
-micro modules/home/example.nix
-```
+| Scope | Do this |
+|---|---|
+| Every profile, user side | Add to `imports` in `home.nix` |
+| Every profile, system side | Add to `commonNixosModules` in `flake.nix` |
+| Every desktop profile | Append to `sharedDesktopProfile.extraNixosImports` in `nixos/profiles.nix` |
+| One profile | Set `extraNixosImports` / `extraHomeImports` on that profile |
+| One machine, hardware-ish | Drop it in the host folder and import from `default.nix` / `home.nix` |
 
-Minimal Home Manager module:
+Careful with per-profile `extraNixosImports`: setting it **replaces** the
+list inherited from `sharedDesktopProfile`. Write
+`sharedDesktopProfile.extraNixosImports ++ [...]` if you meant to add.
 
-```nix
-{
-  pkgs,
-  ...
-}: {
-  home.packages = with pkgs; [
-    hello
-  ];
-}
-```
-
-For a NixOS module, drop it under `modules/nixos/` instead and use
-`environment.systemPackages` / `services.*` / etc.
-
-### 2) Wire module
-
-Decide where it should live:
-
-- Everywhere (baseline for all profiles):
-  - Home Manager: add `./modules/home/example.nix` to `imports` in
-    `home.nix`.
-  - NixOS: add `./modules/nixos/example.nix` to `commonNixosModules` in
-    `flake.nix`.
-- On every desktop profile (QEMU/VirtualBox/bare-metal desktop):
-  - NixOS-style: append to `sharedDesktopProfile.extraNixosImports`.
-  - (Home Manager-style: `sharedDesktopProfile` does not hold HM extras
-    by default — either add one there or add it per profile below.)
-- On a single profile only:
-  - Home Manager-style: set `extraHomeImports = [...]` on
-    `profiles.<name>`.
-  - NixOS-style: set `extraNixosImports = [...]` on `profiles.<name>`
-    (this replaces the list inherited from `sharedDesktopProfile`;
-    concatenate `sharedDesktopProfile.extraNixosImports ++ [...]` if
-    you want to keep the desktop defaults).
-- On a single profile only, but the module is genuinely host-specific
-  (hardware quirks, dual-boot grub, fan curves, etc.): drop it under
-  `nixos/hosts/<name>/nixos/<your-module>.nix` (or `…/home/…` for HM)
-  and import it from that host's `default.nix` / `home.nix`. That keeps
-  the shared `modules/` trees free of host-specific clutter.
-
-Example — add `./modules/home/example.nix` only to `nixos-desktop` as a
-Home Manager import:
-
-```nix
-nixos-desktop = sharedDesktopProfile // {
-  hostname = "nixos-desktop";
-  hypervisor = "none";
-  extraHomeImports = [./modules/home/example.nix];
-};
-```
-
-### 3) Validate
+Then validate:
 
 ```bash
 home-manager switch --flake .#david
 sudo nixos-rebuild switch --flake .#nixos-vm
 ```
+
+---
+
+## Ephemeral shells: `ns`
+
+`ns` gives you three throwaway "worlds" that differ only in how the
+filesystem behaves. Packages and run-vs-shell compose on top of any of
+them.
+
+| Mode | Flag / sigil | Sees your real files | Writes persist |
+|---|---|:---:|:---:|
+| live | *(default)* | yes | **yes** |
+| isolated | `-i` / `--isolated` / `!` | **no** (empty `/work`) | no |
+| rehearse | `-r` / `--rehearse` / `@` | yes | **no** (copy-on-write) |
+
+```bash
+ns rg -n foo .        # live: run a tool ephemerally, then it's gone
+ns rg fd --           # live: interactive shell with rg + fd on PATH
+ns !                  # isolated: empty world, sees nothing real
+ns ! URL -N           # isolated: clone a repo, no network
+ns @                  # rehearse: your real files, every change reverts on exit
+ns @ just deploy      # rehearse: run it for real, then discard everything
+ns -h                 # full help
+```
+
+Grammar: `ns [MODE] [pkg ...] [ -- | cmd ... ]`. A trailing `--` means
+"interactive shell, and the tokens before it are packages"; without it,
+the first token is both the command and the package to fetch. `-N`
+cuts the network in the sandboxed modes. Rehearse mode needs
+unprivileged overlayfs (kernel ≈5.11+); no root, no setuid.
+
+It's a dual module, and it's exported for other flakes as
+`homeManagerModules.ns` / `nixosModules.ns` — add this repo as an input
+and set `programs.ns.enable = true`. `modules/dual/ns/ns.fish` is also
+self-contained enough to drop into any fish config.
+
+Details: [`modules/dual/ns/README.md`](modules/dual/ns/README.md) ·
+[`docs/spec-ephemeral-shells.md`](docs/spec-ephemeral-shells.md)
+
+---
+
+## Dev and agent tooling
+
+**Claude Code and Cursor are wired together, deliberately.** Both are
+fed from the same pinned upstreams in
+[`modules/home/dev/agent-sources.nix`](modules/home/dev/agent-sources.nix)
+— one table of `rev` + `hash` for every marketplace, plugin and skill
+repo. The project rule is that **nothing lands for one agent alone**:
+Cursor has no plugin loader and runs no hooks, so anything Claude gets
+from a plugin or a hook has to be re-expressed by hand on the Cursor
+side (skills and commands as file trees, MCP servers merged into
+`~/.cursor/mcp.json`, hooks as `alwaysApply` rules). The checklist lives
+in [`CLAUDE.md`](CLAUDE.md). Both agents share one memory store, via
+claude-mem's MCP server.
+
+To bump a pinned upstream: change `rev`, set `hash = lib.fakeHash`,
+rebuild, and paste in the hash the error reports.
+
+**`dmux`** is a tmux + git-worktree multiplexer for coding agents. It
+isn't in nixpkgs, so it's built here from the npm tarball, with two
+patches worth knowing about because they'll need re-checking on every
+version bump: one teaches it to bootstrap panes under fish (it types
+POSIX `sh` syntax that fish rejects outright, so agents never launch),
+and one makes its `client-resized` hook non-blocking (the blocking
+version wedges the entire tmux server when you drag a window edge).
+
+**`sesh`** is the session picker behind `ctrl-g` and `prefix+S`, over
+live tmux sessions, configured entries and zoxide's frecent
+directories. `ctrl-x` in the picker kills the highlighted session.
+
+**`dbhub`** exposes every Sencrop database to the agents as one MCP
+server, with one tool per database rather than a generic
+"execute_sql" — so the database name is part of the tool name and preprod
+can't be mistaken for prod. Credentials live in
+`~/.config/dbhub/dbhub.toml`, deliberately unmanaged and hand-created at
+mode `0600`, because anything Nix writes lands world-readable in
+`/nix/store`.
+
+**Cachix** is set up at the system level, with the auth token injected
+per-invocation from an agenix secret by a fish wrapper — never exported
+into the environment, so a push credential doesn't leak into every child
+process. **Tailscale** authenticates from an agenix key file, so a fresh
+machine joins the tailnet on first boot.
+
+---
+
+## Documentation index
+
+| Document | What's in it |
+|---|---|
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | The architecture in depth: the four principles, where a given thing belongs, how `mkProfile` works, invariants not to break |
+| [`docs/install-bare-metal.md`](docs/install-bare-metal.md) | Full install runbook: ISO, networking, disko layouts, host keys, `nixos-anywhere`, troubleshooting |
+| [`docs/wsl-host-setup.md`](docs/wsl-host-setup.md) | One-time Windows-side setup: KVM, AV exclusions, `.wslconfig`, `/nix` on real ext4 |
+| [`docs/spec-ephemeral-shells.md`](docs/spec-ephemeral-shells.md) | The `ns` spec (approved, implemented) |
+| [`docs/spec-agent-multiplexer.md`](docs/spec-agent-multiplexer.md) | The `wt` spec (draft, not implemented) |
+| [`modules/dual/ns/README.md`](modules/dual/ns/README.md) | `ns` reference, including standalone use outside Nix |
+| [`CLAUDE.md`](CLAUDE.md) | Conventions for AI agents working in this repo — including the parity rule |
+| [`secrets/secrets.nix`](secrets/secrets.nix) | Recipient list, with the agenix workflows in its header comments |
+| [`pins.nix`](pins.nix) | Every version pin and the reason for it |

@@ -2,8 +2,9 @@
   imports = [
     # Host-specific NixOS sub-modules under `./nixos/`. Add new files
     # there and import them here. `hardware-configuration.nix` lives
-    # there too — guarded so the flake still evaluates if it hasn't
-    # been generated yet.
+    # there too — imported unguarded because this host is already
+    # installed and the file is committed. (A not-yet-installed host
+    # needs the `pathExists` guard from `_template-bare-metal`.)
     ./nixos/hardware-configuration.nix
     ../../disko/single-disk-uefi.nix
 

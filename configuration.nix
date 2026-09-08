@@ -9,10 +9,14 @@
         This system is defined only as a flake (see flake.nix).
 
         From the VM (with the 9p share mounted), run:
-          sudo nixos-rebuild switch --flake /mnt/hmconfig#vm
+          sudo nixos-rebuild switch --flake /mnt/hmconfig#nixos-vm
 
         If you symlink the checkout: sudo ln -sfn /mnt/hmconfig /etc/nixos
-          sudo nixos-rebuild switch --flake /etc/nixos#vm
+          sudo nixos-rebuild switch --flake /etc/nixos#nixos-vm
+
+        Substitute the profile name for your machine — the full list is
+        in nixos/profiles.nix (nixos-vm, nixos-vm-headless, nixos-wsl,
+        nixos-desktop, …).
       '';
     }
   ];

@@ -9,7 +9,7 @@ Usage:
 
 Examples:
   update-appimage-hash.sh "https://example.com/MyApp.AppImage"
-  update-appimage-hash.sh "https://example.com/MyApp.AppImage" --replace modules/gaming.nix "sha256-OLD..."
+  update-appimage-hash.sh "https://example.com/MyApp.AppImage" --replace modules/home/gaming.nix "sha256-OLD..."
 
 Notes:
   - This script computes an SRI hash (sha256-...).

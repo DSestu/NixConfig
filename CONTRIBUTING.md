@@ -58,7 +58,8 @@ profiles import a layout, so disko wakes up and owns partitioning +
 .
 ├── flake.nix                    # Thin entrypoint: inputs + outputs glue
 ├── home.nix                     # User baseline — imports every modules/home/*.nix
-├── readme.md                    # User-facing build/install/troubleshooting
+├── readme.md                    # Doc entrypoint: features + daily commands
+├── docs/                        # Long-form runbooks and specs
 ├── CONTRIBUTING.md              # ← you are here
 │
 ├── modules/
@@ -147,9 +148,11 @@ nixos-desktop = sharedDesktopProfile // {
 `mkProfile name profile` is called for every entry and produces a
 `nixpkgs.lib.nixosSystem`. It assembles the module list in this order:
 
-1. **`commonNixosModules`** — the unconditional NixOS baseline:
-   `profile-options.nix`, `nixos/base.nix`, the impermanence module,
-   the home-manager module, and `disko.nixosModules.default`. Disko is
+1. **`commonNixosModules`** — the unconditional NixOS baseline (in
+   `flake.nix`): the pins overlay, `profile-options.nix`,
+   `nixos/base.nix`, `nixos/modules/secrets.nix`, `modules/dual/fish.nix`,
+   `modules/dual/ns` (enabled with Tide badges), `modules/home/network.nix`,
+   and the agenix, impermanence, home-manager and disko modules. Disko is
    inert here; it only activates if a later module sets
    `disko.devices`.
 
@@ -194,9 +197,11 @@ stays put.
 A profile entry in the dictionary has up to six fields. Mandatory:
 
 - `hostname` — string, becomes `networking.hostName`.
-- `hypervisor` — `"qemu"` | `"virtualbox"` | `"wsl"` | `"none"`.
-  Selects which platform module to load; `"none"` means bare metal
-  (host folder + disko own the bootloader and root FS).
+- `hypervisor` — `"qemu"` | `"wsl"` | `"none"`. Selects which platform
+  module to load; `"none"` means bare metal (host folder + disko own
+  the bootloader and root FS). Any other value `throw`s at eval time —
+  VirtualBox guests are bare-metal-style profiles installed via
+  `nixos-anywhere`, so they use `"none"`.
 
 Optional (with defaults):
 
@@ -309,13 +314,26 @@ boot-critical paths that systemd expects (see comments in
 `vm-qemu.nix` for the `/sbin/init` / `/usr/lib/os-release` /
 `/run/current-system` rationale).
 
-**Bare-metal profiles.** Not currently implemented. The pre-refactor
-`wipe-root` initrd service has been removed and the disk-backed disko
-layouts (`single-disk-uefi.nix`, `single-disk-bios.nix`) do not yet
-provide an equivalent. All bare-metal profiles
-(`_template-bare-metal`, `nixos-desktop`, `nixos-vbox`) therefore
-have `impermanence = false` until SPEC.md Phase 4 lands a btrfs
-subvolume rollback in `nixos/modules/wipe-root.nix`.
+**Bare-metal profiles (btrfs subvolume rollback).**
+`nixos/modules/wipe-root.nix` runs a stage-1 initrd service before
+`sysroot.mount`: it moves the old `@` subvolume to
+`@old_roots/<timestamp>`, garbage-collects old roots beyond 30 days,
+and snapshots a fresh `@` from the never-written `@blank`. `mkProfile`
+loads it automatically when `profiles.impermanence.enable` is true
+*and* `hypervisor = "none"`. It is paired with
+`nixos/disko/single-disk-uefi.nix`, which provisions the btrfs
+filesystem and the subvolumes the rollback expects — the flat ext4
+BIOS layout has no `@blank` and cannot be used with impermanence.
+
+The 30-day `@old_roots` window is a deliberate recovery grace period:
+`btrfs subvolume snapshot @old_roots/<ts> @` from a rescue boot puts a
+clobbered root back.
+
+`nixos-desktop` runs with `impermanence = true`. `nixos-vm-bare-test`
+(plus `scripts/run-vm-bare-test.sh`) is the harness for exercising
+this exact path inside QEMU, with a boot-time canary unit that reports
+wipe state to the journal — use it before flipping the flag on a real
+machine. `_template-bare-metal` and `nixos-vbox` stay `false`.
 
 **Persistence map.** The other half of the picture — what lives in
 `/nix/persist` and gets bind-mounted back — is split:
@@ -335,20 +353,25 @@ it to one of those two files — not to a new module.
 
 Two reusable layouts live in `nixos/disko/`:
 
-- `single-disk-uefi.nix` — GPT, 512 MiB FAT32 ESP at `/boot`, ext4
-  root, paired with systemd-boot.
+- `single-disk-uefi.nix` — GPT, 512 MiB FAT32 ESP at `/boot`, and one
+  btrfs filesystem labelled `nixos` for everything else, paired with
+  systemd-boot. Five subvolumes: `@` → `/` (wiped every boot),
+  `@blank` (never mounted, the rollback source, held read-only by an
+  activation script), `@nix` → `/nix`, `@persist` → `/nix/persist`,
+  `@log` → `/var/log`. `/nix/persist` is marked `neededForBoot` so
+  impermanence's bind-mount source exists in stage 1. **This is the
+  layout wipe-root expects.**
 - `single-disk-bios.nix` — GPT with a 1 MiB BIOS-boot partition for
-  GRUB stage 2, ext4 root, no separate `/boot`.
+  GRUB stage 2, flat ext4 root, no separate `/boot`. No subvolumes,
+  so **not** usable with `impermanence = true`.
 
 Both:
 
 - Use `lib.mkDefault` for the device name and bootloader settings, so
   a host folder can override without `lib.mkForce` gymnastics
   (`disko.devices.disk.main.device = "/dev/nvme0n1";`).
-- Place the bootloader on a path that survives wipe-root's preserve
-  list (`boot` for UEFI, `nix`/the GRUB partition for BIOS).
-- Keep the layout flat — no LVM, no subvolumes, no swap — to match
-  the QEMU/OVA platform modules.
+- Keep the bootloader outside the wiped root — the ESP is its own
+  filesystem on UEFI; on BIOS, GRUB lives in the BIOS-boot partition.
 
 A bare-metal host folder activates one of them with a single import:
 
@@ -416,9 +439,10 @@ checkout) — don't generalize that pattern.
   doesn't import a disko layout, or it's a VM profile that
   accidentally does.
 - *"Wipe killed something I needed"* → add the path to
-  `environment.persistence` (system) or `home.persistence` (user), or
-  add the top-level dir to `profiles.impermanence.preserveDirs` if
-  it's a mount point.
+  `environment.persistence` in `nixos/base.nix` (system) or
+  `home.persistence` in `modules/home/persistence.nix` (user). On bare
+  metal you can also recover the previous root from
+  `@old_roots/<timestamp>` within 30 days.
 - *"Hardware-config import errors on first install"* → the
   `pathExists` guard isn't there. Compare against
   `nixos/hosts/_template-bare-metal/default.nix`. Note that the
@@ -428,5 +452,6 @@ checkout) — don't generalize that pattern.
   doesn't include your user on the host running the build. See
   `nixos/platforms/wsl.nix`.
 - *"`nixos-rebuild` runs the wrong config in a QEMU VM"* → the 9p
-  share isn't mounted at `/mnt/hmconfig`, or `/etc/nixos` symlink
-  was wiped because `mnt` isn't in `preserveDirs`.
+  share isn't mounted at `/mnt/hmconfig`. The `/etc/nixos` → `/mnt/hmconfig`
+  symlink is re-created on every boot by a `systemd.tmpfiles` rule in
+  `vm-qemu.nix`, so check the share before suspecting the symlink.

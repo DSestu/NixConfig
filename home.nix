@@ -7,6 +7,7 @@
     ./modules/home/common.nix
     ./modules/dual/fish.nix
     ./modules/dual/ns
+    ./modules/home/t3code.nix
     ./modules/home/dev.nix
     ./modules/home/deployment.nix
     ./modules/home/network.nix
