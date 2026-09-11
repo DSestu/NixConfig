@@ -145,6 +145,10 @@
       isNormalUser = true;
       extraGroups = ["wheel"];
       shell = pkgs.fish;
+      # Keep the user manager running without a login session so the
+      # systemd *user* units (t3code-serve / t3code-funnel) start at boot
+      # and survive logout. See modules/home/t3code.nix.
+      linger = true;
     }
     // (
       if builtins.pathExists ../secrets/david-password.age
