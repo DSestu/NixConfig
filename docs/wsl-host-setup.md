@@ -112,13 +112,20 @@ memory=24GB
 processors=12
 swap=8GB
 networkingMode=mirrored
+
+[experimental]
+hostAddressLoopback=true
 ```
 
 Tune `memory`/`processors` to leave Windows roughly 8 GB and a couple of
 cores. `networkingMode=mirrored` requires WSL ≥ 2.0.0 (`wsl --version`
 to check) — it avoids substituter hangs caused by WSL's default NAT, and
 it's what lets WSL reach a bridged VirtualBox VM on your LAN during a
-[bare-metal install](install-bare-metal.md).
+[bare-metal install](install-bare-metal.md). `hostAddressLoopback=true` is
+required alongside mirrored mode whenever WSL must reach a service on the
+Windows host by one of the host's own IPs (its Tailscale `100.x`, its LAN
+IP): mirrored mode otherwise makes those addresses *local* inside WSL, so
+the connection is delivered to nothing and never leaves the VM.
 
 Apply it:
 
