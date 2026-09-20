@@ -33,20 +33,66 @@
   # whitelisted for impermanence (modules/home/persistence.nix).
   baseDir = "${config.home.homeDirectory}/.local/share/t3code";
 
-  # `t3@latest` re-resolves the newest release on every start — that is what
-  # "latest" buys, at the cost of a network fetch at boot and no
-  # reproducibility. Pin `t3@<version>` here to freeze it.
+  # npm installs t3 into its own prefix here rather than being re-resolved by
+  # `npx` on every start. Two reasons, both learned the hard way:
+  #
+  #   - `npx t3@latest` re-runs dependency resolution at each boot. The
+  #     `@effect/*` packages declare peer ranges that send npm's resolver into
+  #     near-unbounded backtracking — it burned 16+ minutes of CPU at 190%
+  #     and still had not bound the port, so the funnel served a blank page.
+  #     `--legacy-peer-deps` skips peer resolution and finishes in ~9s.
+  #   - Keeping the install on disk means a boot with no network still starts
+  #     the server from what is already there.
+  runtimeDir = "${baseDir}/runtime";
+
+  # The self-contained CLI payload for this machine. `t3` is only a launcher;
+  # this is the package that actually carries the binary.
+  t3Platform =
+    {
+      x86_64-linux = "@t3code/t3-linux-x64";
+      aarch64-linux = "@t3code/t3-linux-arm64";
+    }
+    .${pkgs.stdenv.hostPlatform.system};
+
+  # `t3@latest` re-resolves the newest release on every install — that is what
+  # "latest" buys, at the cost of a network fetch and no reproducibility.
+  # Pin `t3@<version>` here to freeze it.
   serveScript = pkgs.writeShellScript "t3code-serve" ''
-    exec npx --yes t3@latest serve \
+    set -eu
+    mkdir -p ${runtimeDir}
+    cd ${runtimeDir}
+    [ -f package.json ] || echo '{"name":"t3code-runtime","private":true}' > package.json
+
+    # Best-effort refresh: a failed install (offline, registry down) must not
+    # stop an already-installed server from starting.
+    #
+    # The payload is an optionalDependency of `t3`, and it pulls
+    # @ff-labs/fff-bin-linux-x64-musl, which declares libc=musl and so fails
+    # EBADPLATFORM on glibc. npm then silently drops the whole optional
+    # subtree and the launcher aborts at startup with "no T3 Code CLI build is
+    # available for this platform (linux-x64)". Naming the platform package as
+    # a direct dependency with --force installs it anyway; --ignore-scripts
+    # keeps node-pty from invoking node-gyp with no C toolchain on PATH (the
+    # payload ships its own prebuilt).
+    npm install --force --ignore-scripts --legacy-peer-deps --no-audit --no-fund \
+      t3@latest ${t3Platform} || \
+      echo "t3code: npm install failed, starting the existing install" >&2
+
+    exec ./node_modules/.bin/t3 serve \
       --mode web \
       --host 127.0.0.1 \
       --port ${port} \
       --base-dir ${baseDir}
   '';
 
-  # npx needs node; the agent shells out to git and a POSIX shell for its
+  # npm needs node; the agent shells out to git and a POSIX shell for its
   # provider CLIs, so keep those on PATH too. Not added to home.packages —
   # the units carry their own PATH.
+  #
+  # No C/Python toolchain here on purpose: npm's script-approval gate skips
+  # the install scripts for node-pty and msgpackr-extract, and the server runs
+  # fine on the prebuilt paths. If PTY features ever misbehave, that is the
+  # thread to pull — add python3/gcc/gnumake and approve the scripts.
   runtimePath = [pkgs.nodejs_24 pkgs.git pkgs.bash pkgs.coreutils];
 
   # Tailscale funnel only accepts 443 / 8443 / 10000 as the public port;
