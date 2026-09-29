@@ -31,6 +31,10 @@
 # typically for template/demo purposes or when you don't know the correct hash yet.
 #    hash = lib.fakeHash;
 {
+  # NOTE: claude-code used to live here, pinned ahead of nixos-unstable. It
+  # now comes from the `nix-claude-code` flake input (see flake.nix), which
+  # tracks Anthropic's releases automatically — no rev/hash to maintain.
+
   # quarto: held at nixos-25.05. quarto 1.8.x ships a jog.lua filter that
   # can't traverse pandoc's TableBody AST node, breaking table rendering.
   quarto = {

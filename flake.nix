@@ -27,6 +27,15 @@
       url = "github:nix-community/nixGL";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # claude-code, straight from Anthropic's official release binaries. A
+    # GitHub Action in that repo polls npm + Anthropic's dist server hourly
+    # and commits the hashes, so tracking a new release is a plain
+    # `nix flake update nix-claude-code` — no nixpkgs commit to hunt for and
+    # no hash to prefetch (which is why claude-code is no longer in pins.nix).
+    nix-claude-code = {
+      url = "github:ryoppippi/nix-claude-code";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = {
@@ -38,6 +47,7 @@
     disko,
     nixgl,
     agenix,
+    nix-claude-code,
     ...
   }: let
     system = "x86_64-linux";
@@ -66,6 +76,8 @@
       config.allowUnfree = true;
       overlays = [
         pinsOverlay
+        # pkgs.claude-code → latest official release (see the input comment).
+        nix-claude-code.overlays.default
         (final: prev: {
           # code-cursor's wrapper does not include libstdc++, so prebuilt
           # .node addons (e.g. DuckDB) that dlopen it via Cursor's nix-store
@@ -138,7 +150,7 @@
       # `disko.nixosModules.default` is loaded but inert until a host
       # folder imports one of `nixos/disko/single-disk-{uefi,bios}.nix`.
       commonNixosModules = [
-        {nixpkgs.overlays = [pinsOverlay];}
+        {nixpkgs.overlays = [pinsOverlay nix-claude-code.overlays.default];}
         ./nixos/modules/profile-options.nix
         ./nixos/base.nix
         ./nixos/modules/secrets.nix
