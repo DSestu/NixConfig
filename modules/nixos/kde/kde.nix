@@ -13,6 +13,7 @@
     (with pkgs.kdePackages; [
       plasma-systemmonitor
       libksysguard
+      krohnkite
     ]);
 
   # PipeWire for audio (KDE expects it)

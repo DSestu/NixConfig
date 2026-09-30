@@ -219,6 +219,7 @@ in {
       kwinrc.Effect-blur.NoiseStrength = 12;
       kwinrc.Effect-zoom.InitialZoom = 1.2635030053556378;
       kwinrc.Plugins.blurEnabled = true;
+      kwinrc.Plugins.krohnkiteEnabled = true;
       kwinrc.Plugins.desktopchangeosdEnabled = true;
       kwinrc.Plugins.fadeEnabled = true;
       kwinrc.Plugins.magiclampEnabled = true;
