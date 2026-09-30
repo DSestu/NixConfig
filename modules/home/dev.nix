@@ -62,6 +62,7 @@ in {
       delta # required backend for diffnav
       quarto
       tableplus
+      lazydocker # docker TUI
       nodejs
       bun
       nixd # Nix language server
