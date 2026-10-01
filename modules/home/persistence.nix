@@ -59,11 +59,12 @@
       ".config/Code/User"
       ".config/Cursor/User"
 
-      # --- T3 Code (projects, threads, pairing credentials) ---
+      # --- T3 Code (projects, threads, pairing + T3 Connect credentials) ---
       # Matches `--base-dir` in modules/home/t3code.nix; without this the
-      # funnel URL demands a fresh pairing token after every boot.
+      # server demands a fresh pairing token and a re-link to T3 Connect
+      # after every boot.
       {
-        directory = ".local/share/t3code";
+        directory = ".t3";
         mode = "0700";
       }
 

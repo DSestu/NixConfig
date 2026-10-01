@@ -53,12 +53,19 @@
   # share one memory store (~/.claude-mem/claude-mem.db) — Cursor can search
   # what Claude recorded and vice versa.
   memRoot = sources.pluginRoots."claude-mem@thedotmack";
+  contextModeRoot = sources.pluginRoots."context-mode@context-mode";
 
   mcpAddition = {
     mcpServers.claude-mem = {
       type = "stdio";
       command = "${pkgs.nodejs}/bin/node";
       args = ["${memRoot}/scripts/mcp-server.cjs"];
+    };
+    # Same entrypoint the Claude plugin's plugin.json launches.
+    mcpServers.context-mode = {
+      type = "stdio";
+      command = "${pkgs.nodejs}/bin/node";
+      args = ["${contextModeRoot}/start.mjs"];
     };
   };
 in {
@@ -87,6 +94,11 @@ in {
     # so no wrapping is needed, unlike i-have-adhd's SKILL.md above.
     ".cursor/rules/ponytail.mdc".source =
       "${sources.pluginRoots."ponytail@ponytail"}/.cursor/rules/ponytail.mdc";
+
+    # context-mode's Claude plugin injects its routing rules via a SessionStart
+    # hook; upstream ships the Cursor equivalent as an alwaysApply rule.
+    ".cursor/rules/context-mode.mdc".source =
+      "${contextModeRoot}/configs/cursor/context-mode.mdc";
   };
 
   # ~/.cursor/mcp.json is hand-maintained (it carries a postgres server whose

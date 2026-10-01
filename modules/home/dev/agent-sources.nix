@@ -94,6 +94,33 @@
         };
       };
     };
+    diagram-design = {
+      owner = "cathrynlavery";
+      repo = "diagram-design";
+      rev = "dcd9317ed9ec7477b20005544f36e3313664d815";
+      hash = "sha256-+f2qlu3w3G09DwC7i9MRKkrz4yhQuJPLU6ytxYBJ/to=";
+      plugins = {
+        diagram-design = {
+          version = "2.6.18";
+          pluginSubpath = "";
+          skillsSubpath = "skills";
+          commandsSubpath = "commands";
+        };
+      };
+    };
+    context-mode = {
+      owner = "mksglu";
+      repo = "context-mode";
+      rev = "2d98ac01ddae447bccba6d821fad3362c85bab2e";
+      hash = "sha256-/bx+6KPhpdkITO8Zq9uj4lx2v1d0Xi2M1vPBcF+R14c=";
+      plugins = {
+        context-mode = {
+          version = "1.0.169";
+          pluginSubpath = "";
+          skillsSubpath = "skills";
+        };
+      };
+    };
     thedotmack = {
       owner = "thedotmack";
       repo = "claude-mem";
