@@ -37,11 +37,11 @@
     claude-code-warp = {
       owner = "warpdotdev";
       repo = "claude-code-warp";
-      rev = "b8ad3cc6c1e40b2d2a944f900a4ae0904a54dd7f";
-      hash = "sha256-ceNIw6p+T9nyimnRYRX0hUsQjwtou2RkXUquHM+9IcM=";
+      rev = "f8c6287bf4372ae22580be1d31a9a294768a2d61";
+      hash = "sha256-YR5mYRBjSEXt24uLOWDWqzcP8KaCY1Van5neWtsUgrw=";
       plugins = {
         warp = {
-          version = "2.0.0";
+          version = "2.3.0";
           pluginSubpath = "plugins/warp";
         };
       };
