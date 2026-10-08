@@ -64,8 +64,8 @@
     humanizer = {
       owner = "blader";
       repo = "humanizer";
-      rev = "e2e92e7b4b8229253ed5c8e81dc65463fdeddda5";
-      hash = "sha256-n08pud3m9ka1Ymqv6qinSCUku975FM2LJRboi9ur5D4=";
+      rev = "225a6f39ac85f76ee48dbad772ea4abe4ed6c9d8";
+      hash = "sha256-n8cbTzhlGf8VnWpPukq7XD2mucIrqyE1XMpAAc5oA8A=";
       plugins = {
         humanizer = {
           version = "2.11.2";
