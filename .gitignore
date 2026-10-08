@@ -5,3 +5,5 @@ nixos-vm-bare-test.qcow2
 
 result
 .dmux/
+.dmux-hooks/
+.vscode/
