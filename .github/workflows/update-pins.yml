@@ -1,0 +1,66 @@
+# One PR per pin: pins.nix entries (→ nixos-unstable head) and
+# agent-sources.nix repos (→ default-branch HEAD).
+name: update-pins
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 4 * * 1'   # Mondays 04:00 UTC
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  list:
+    runs-on: ubuntu-latest
+    outputs:
+      targets: ${{ steps.list.outputs.targets }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/determinate-nix-action@v3
+      - id: list
+        run: |
+          echo "targets=$(nix eval --impure --json --expr '
+            let
+              agents = import ./modules/home/dev/agent-sources.nix { pkgs = {}; lib = {}; };
+              each = script: map (name: { inherit script name; });
+            in
+              each "pin-update.sh" (builtins.attrNames (import ./pins.nix { lib = {}; }))
+              ++ each "agent-source-update.sh" (builtins.attrNames (agents.marketplaces // agents.skillRepos))
+          ')" >> "$GITHUB_OUTPUT"
+  update:
+    needs: list
+    if: needs.list.outputs.targets != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJSON(needs.list.outputs.targets) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/determinate-nix-action@v3
+      - id: bump
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/${{ matrix.target.script }} ${{ matrix.target.name }}
+      - if: steps.bump.outputs.title != ''
+        id: pr
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: ${{ steps.bump.outputs.branch }}
+          add-paths: |
+            pins.nix
+            modules/home/dev/agent-sources.nix
+          commit-message: ${{ steps.bump.outputs.title }}
+          title: ${{ steps.bump.outputs.title }}
+          body: ${{ steps.bump.outputs.body }}
+      # Branches are <kind>/<name>/<version>, so a newer release supersedes
+      # older PRs for the same pin.
+      - name: Close superseded PRs
+        if: steps.pr.outputs.pull-request-number != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CURRENT: ${{ steps.bump.outputs.branch }}
+          NUMBER: ${{ steps.pr.outputs.pull-request-number }}
+        run: |
+          PREFIX="${CURRENT%/*}/" gh pr list --state open --json number,headRefName \
+            -q '.[] | select((.headRefName | startswith(env.PREFIX)) and .headRefName != env.CURRENT) | .number' |
+            xargs -r -I{} gh pr close {} --delete-branch -c "Superseded by #$NUMBER"

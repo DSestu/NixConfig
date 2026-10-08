@@ -13,5 +13,16 @@ jobs:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/determinate-nix-action@v3
       - uses: DeterminateSystems/update-flake-lock@main
+        id: update
         with:
           pr-title: "flake: update lock"
+      - name: Describe changes in the PR body
+        if: steps.update.outputs.pull-request-number != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git fetch origin main:old update_flake_lock_action:new
+          git worktree add /tmp/old old
+          git worktree add /tmp/new new
+          ./scripts/flake-update-summary.sh /tmp/old /tmp/new > body.md
+          gh pr edit ${{ steps.update.outputs.pull-request-number }} --body-file body.md
