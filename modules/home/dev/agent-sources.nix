@@ -25,8 +25,8 @@
     claude-plugins-official = {
       owner = "anthropics";
       repo = "claude-plugins-official";
-      rev = "00679aef889efe36bb0389f81d70b6229a2013ee";
-      hash = "sha256-zB1pUtTloc2yTX735voGVkxqU7IyNBjqGJzpFOy9pH0=";
+      rev = "b860d6f2554f145fe1e7ac4cdcabca0120d14030";
+      hash = "sha256-SwDRZwwQV/NlVvfdaZZn8Y2Ix2rSHw8yggVLLO1+eLw=";
       plugins = {
         pyright-lsp = {
           version = "1.0.0";
