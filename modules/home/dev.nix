@@ -173,6 +173,13 @@ in {
       ControlPath = "~/.ssh/master-%r@%n:%p";
       ControlPersist = "no";
     };
+    # Some networks block outbound port 22. GitHub serves SSH on 443 at
+    # ssh.github.com with the same host keys, so alias them to github.com.
+    settings."github.com" = {
+      HostName = "ssh.github.com";
+      Port = 443;
+      HostKeyAlias = "github.com";
+    };
   };
   services.ssh-agent.enable = true;
 }
