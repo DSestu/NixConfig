@@ -25,24 +25,47 @@
 #   - Remote access is T3 Connect (`t3 connect link`), not a Tailscale funnel.
 #     Funnel is a paid-plan feature and returned "Funnel is not available on
 #     the Starter plan" on this tailnet, so the funnel unit is gone. T3
-#     Connect relays through relay.t3.codes and fetches its own cloudflared
-#     into ~/.t3/tools at runtime — that part stays outside Nix.
+#     Connect relays through relay.t3.codes via a cloudflared tunnel; the
+#     wrapper below points it at nixpkgs' cloudflared instead of letting it
+#     download its own.
 {
   config,
   pkgs,
   ...
 }: let
+  # Also hardcoded in the `t3code` alias in modules/dual/fish.nix.
   port = "3773";
 
   # ~/.t3 is upstream's own default (T3CODE_HOME), and it is where the T3
-  # Connect authorization, relay link and downloaded cloudflared already sit.
+  # Connect authorization and relay link sit.
   # Whitelisted for impermanence in modules/home/persistence.nix.
   baseDir = "${config.home.homeDirectory}/.t3";
 
   # enableClaude is off by default upstream; this machine drives T3 Code with
   # Claude Code, so put it on the server's PATH. git/gh/codex are already on
   # by the package's own defaults.
-  t3 = pkgs.t3code.override {enableClaude = true;};
+  #
+  # Upstream bakes the T3 Connect public config into its release builds; the
+  # nixpkgs source build leaves it empty, which hides `t3 connect` ("unavailable
+  # in builds without public configuration") and never starts the relay
+  # tunnel, so the app shows "Relay could not reach the environment endpoint".
+  # The values are public (copied from the official binary) and read from env
+  # at runtime, so bake them into the wrapper: the unit and a shell `t3` both
+  # get them.
+  t3 = pkgs.symlinkJoin {
+    name = "t3code-connect";
+    paths = [(pkgs.t3code.override {enableClaude = true;})];
+    nativeBuildInputs = [pkgs.makeBinaryWrapper];
+    postBuild = ''
+      for program in "$out/bin"/*; do
+        wrapProgram "$program" \
+          --set-default T3CODE_RELAY_URL https://relay.t3.codes \
+          --set-default T3CODE_CLERK_PUBLISHABLE_KEY pk_live_Y2xlcmsudDMuY29kZXMk \
+          --set-default T3CODE_CLERK_CLI_OAUTH_CLIENT_ID hzxSgY2cH10sDU2r \
+          --set-default T3CODE_CLOUDFLARED_PATH ${pkgs.cloudflared}/bin/cloudflared
+      done
+    '';
+  };
 in {
   # `t3` was not on PATH at all before — pairing meant typing the full path
   # into a versioned node_modules directory.

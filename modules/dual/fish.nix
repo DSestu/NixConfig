@@ -66,6 +66,9 @@
     dnw = "diffnav --watch";
     # gh-dash TUI dashboard (config in modules/home/dev.nix, programs.gh-dash).
     ghd = "gh dash";
+    # T3 Code web UI in a chromeless Chrome window (no tabs or URL bar). Port
+    # must match `port` in modules/home/t3code.nix; `t3` is the server CLI.
+    t3code = "google-chrome --app=http://localhost:3773";
   };
 
   # Mamba hook — the MAMBA_EXE store path changes each rebuild, so resolve
