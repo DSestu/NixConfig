@@ -15,7 +15,7 @@ jobs:
       - uses: DeterminateSystems/update-flake-lock@main
         id: update
         with:
-          pr-title: "flake: update lock"
+          pr-title: "❄️ flake: update lock"
       - name: Describe changes in the PR body
         if: steps.update.outputs.pull-request-number != ''
         env:

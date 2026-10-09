@@ -34,11 +34,21 @@ while IFS=$'\t' read -r plugin sub old_ver; do
   change=${change:-$old_ver → $new_ver}
 done < <(jq -r '.plugins // {} | to_entries[] | [.key, .value.pluginSubpath, .value.version] | @tsv' <<<"$src")
 
-title="agents: $name ${change:-${old_rev:0:7} → ${new_rev:0:7}}"
+# Name each rev by its nearest git tag (v5.1.0, or v5.1.0+3 for 3 commits
+# past it). Commits-only clone: describe needs no trees or blobs.
+tags=$(mktemp -d)
+git clone -q --bare --filter=tree:0 "https://github.com/$owner/$repo" "$tags"
+describe() { git -C "$tags" describe --tags "$1" 2>/dev/null | sed 's/-\([0-9]*\)-g[0-9a-f]*$/+\1/'; }
+# No tag and no plugin.json bump means no version: use commit dates.
+commit_date() { git -C "$tags" log -1 --format=%cs "$1"; }
+old_tag=$(describe "$old_rev") || true
+new_tag=$(describe "$new_rev") || true
+[ -n "$new_tag" ] && change="${old_tag:-$(commit_date "$old_rev")} → $new_tag"
+change=${change:-$(commit_date "$old_rev") → $(commit_date "$new_rev")}
 
 {
-  echo "title=$title"
-  echo "branch=agents/$name/${new_rev:0:7}"
+  echo "title=🤖 agents: $name $change"
+  echo "branch=agents/$name/${change##* }"
   echo "body<<EOF"
   echo "Moves \`$name\` ([$owner/$repo](https://github.com/$owner/$repo)) to its latest commit."
   echo "Claude Code and Cursor both pick this up (shared via \`agent-sources.nix\`)."

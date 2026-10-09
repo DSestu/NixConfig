@@ -33,7 +33,7 @@ file=$(pkg "$new_rev" "$new_hash" meta.position | sed 's|^/nix/store/[^/]*/||; s
 sed -i "/^  $name = {/,/};/{s/$old_rev/$new_rev/; s|$old_hash|$new_hash|; s|# $old_ver\$|# $new_ver|}" pins.nix
 
 {
-  echo "title=pins: $name $old_ver → $new_ver"
+  echo "title=📌 pins: $name $old_ver → $new_ver"
   echo "branch=pins/$name/$new_ver"
   echo "body<<EOF"
   echo "Moves the \`$name\` pin to the current \`nixos-unstable\` head."
