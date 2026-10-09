@@ -37,6 +37,8 @@ jobs:
         target: ${{ fromJSON(needs.list.outputs.targets) }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # nix cannot eval a worktree of a shallow repo
       - uses: DeterminateSystems/determinate-nix-action@v3
       - id: bump
         env:
