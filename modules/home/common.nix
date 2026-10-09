@@ -11,6 +11,7 @@
     remmina
     btop
     bitwarden-cli
+    nh
   ];
 in {
   config = lib.mkMerge [
