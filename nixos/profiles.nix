@@ -72,6 +72,20 @@ in {
       impermanence = false;
     };
 
+  # Raspberry Pi 3/4/5, headless, aarch64. Boots from an SD image
+  # built by nixpkgs' sd-image-aarch64 module (see the host folder).
+  # No impermanence: no btrfs layout, so no wipe mechanism.
+  nixos-rpi = {
+    hostname = "nixos-rpi";
+    hypervisor = "none";
+    system = "aarch64-linux";
+    graphics = false;
+    impermanence = false;
+    # home.nix pulls Chrome/Cursor/Steam etc. — x86-only and pointless
+    # on a Pi. The host folder's home.nix replaces it.
+    homeBaseline = false;
+  };
+
   #### VMs ####
   nixos-vm =
     sharedDesktopProfile

@@ -65,7 +65,9 @@
             url = "https://github.com/NixOS/nixpkgs/archive/${pin.rev}.tar.gz";
             sha256 = pin.hash;
           }) {
-            inherit system;
+            # The consuming pkgs' platform, not the flake-level `system`,
+            # so aarch64 profiles (nixos-rpi) get aarch64 pinned packages.
+            system = final.stdenv.hostPlatform.system;
             config.allowUnfree = true;
           })
           .${name}
