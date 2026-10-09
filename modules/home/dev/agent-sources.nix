@@ -34,18 +34,6 @@
         };
       };
     };
-    claude-code-warp = {
-      owner = "warpdotdev";
-      repo = "claude-code-warp";
-      rev = "b8ad3cc6c1e40b2d2a944f900a4ae0904a54dd7f";
-      hash = "sha256-ceNIw6p+T9nyimnRYRX0hUsQjwtou2RkXUquHM+9IcM=";
-      plugins = {
-        warp = {
-          version = "2.0.0";
-          pluginSubpath = "plugins/warp";
-        };
-      };
-    };
     addy-agent-skills = {
       owner = "addyosmani";
       repo = "agent-skills";

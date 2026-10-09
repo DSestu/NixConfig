@@ -23,10 +23,6 @@
       url = "github:nix-community/disko";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    nixgl = {
-      url = "github:nix-community/nixGL";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
     # claude-code, straight from Anthropic's official release binaries. A
     # GitHub Action in that repo polls npm + Anthropic's dist server hourly
     # and commits the hashes, so tracking a new release is a plain
@@ -45,7 +41,6 @@
     impermanence,
     nixos-wsl,
     disko,
-    nixgl,
     agenix,
     nix-claude-code,
     ...
@@ -103,8 +98,6 @@
 
     homeConfigurations."david" = home-manager.lib.homeManagerConfiguration {
       inherit pkgs;
-
-      extraSpecialArgs = {inherit nixgl;};
 
       modules = [
         ./home.nix

@@ -293,9 +293,8 @@ profile — so a pinned `foo` is pinned everywhere `pkgs.foo` appears.
 
 **This only pins backwards.** To get something *newer* than nixpkgs has,
 there's no commit to point at — use `overrideAttrs` at the use site
-instead. There are three precedents to copy from: `gh-stack` and the
-nixGL-wrapped `warp-terminal` in `modules/home/dev.nix`, and
-`code-cursor` in `flake.nix`.
+instead. There are two precedents to copy from: `gh-stack` in
+`modules/home/dev.nix` and `code-cursor` in `flake.nix`.
 
 ---
 
