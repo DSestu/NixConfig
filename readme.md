@@ -1,5 +1,17 @@
 # NixConfig
 
+Quick commands with [`nh`](https://github.com/nix-community/nh), run from the repo root:
+
+```sh
+nh home switch .           # = home-manager switch --flake .#$USER
+nh os switch .             # = sudo nixos-rebuild switch --flake .#$(hostname)
+nh os switch . -H nixos-vm # target another profile
+nh os switch . --ask       # show the package diff, confirm before applying
+nh os switch . -u          # nix flake update, then switch
+nh clean all --keep 5      # drop old generations + GC
+nh search <pkg>            # fast nixpkgs search
+```
+
 One flake, every machine. A bare-metal desktop, a couple of QEMU dev
 VMs, a VirtualBox guest, a WSL distro, and a plain Home Manager setup on
 a non-NixOS laptop all come out of this single repository — each one
