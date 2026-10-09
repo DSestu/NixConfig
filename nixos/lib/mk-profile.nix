@@ -30,7 +30,11 @@
   # Defaults for optional per-profile fields.
   cfg =
     {
+      inherit system;
       graphics = true;
+      # false → skip `home.nix` (desktop apps, x86-only unfree bits);
+      # the host folder's home.nix then carries the whole HM side.
+      homeBaseline = true;
       extraNixosImports = [];
       extraHomeImports = [];
       impermanence = false;
@@ -60,7 +64,7 @@
       backupFileExtension = "bak";
       users.david.imports =
         # 2. Common HM baseline.
-        commonHomeImports
+        (lib.optionals cfg.homeBaseline commonHomeImports)
         # 4. Impermanence: auto-add the user-side persistence map.
         # The HM module is auto-imported by the NixOS module
         # (`impermanence.nixosModules.impermanence` in
@@ -106,7 +110,7 @@
     (root + "/nixos/modules/wipe-root.nix");
 in
   lib.nixosSystem {
-    inherit system;
+    inherit (cfg) system;
     specialArgs = {inherit plasma-manager;};
     modules =
       commonNixosModules
