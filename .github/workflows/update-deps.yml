@@ -1,10 +1,10 @@
-# One PR per pin: pins.nix entries (→ nixos-unstable head) and
-# agent-sources.nix repos (→ default-branch HEAD).
-name: update-pins
+# One PR per upgradeable dependency: flake.lock inputs, pins.nix entries
+# (→ nixos-unstable head) and agent-sources.nix repos (→ default-branch HEAD).
+name: update-deps
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 4 * * 1'   # Mondays 04:00 UTC
+    - cron: '0 4 * * *'   # daily 04:00 UTC
 permissions:
   contents: write
   pull-requests: write
@@ -25,6 +25,7 @@ jobs:
             in
               each "pin-update.sh" (builtins.attrNames (import ./pins.nix { lib = {}; }))
               ++ each "agent-source-update.sh" (builtins.attrNames (agents.marketplaces // agents.skillRepos))
+              ++ each "flake-input-update.sh" (builtins.attrNames (builtins.fromJSON (builtins.readFile ./flake.lock)).nodes.root.inputs)
           ')" >> "$GITHUB_OUTPUT"
   update:
     needs: list
@@ -47,6 +48,7 @@ jobs:
         with:
           branch: ${{ steps.bump.outputs.branch }}
           add-paths: |
+            flake.lock
             pins.nix
             modules/home/dev/agent-sources.nix
           commit-message: ${{ steps.bump.outputs.title }}

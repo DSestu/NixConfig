@@ -16,9 +16,11 @@ targets=(
 apply='map (p: let d = builtins.parseDrvName (p.name or ""); in {
   n = p.pname or d.name; v = p.version or d.version; c = p.meta.changelog or null; })'
 
+failed=$(mktemp)
 pkgs() {
   for t in "${targets[@]}"; do
-    nix eval --json "$1#$t" --apply "$apply" 2>/dev/null || echo '[]'
+    # Errors go to stderr (the CI log); the body just flags the gap.
+    nix eval --json "$1#$t" --apply "$apply" || { echo "- \`$t\` ($1)" >> "$failed"; echo '[]'; }
   done | jq -s 'add | map(select(.v != "")) | INDEX(.n)'
 }
 
@@ -38,6 +40,11 @@ pkgs "$new" > /tmp/new-pkgs.json
 
 echo "## Packages"
 echo
+if [ -s "$failed" ]; then
+  echo "> ⚠️ Could not evaluate (see the workflow log); the table below misses these:"
+  sed 's/^/> /' "$failed"
+  echo
+fi
 jq -rn --slurpfile o /tmp/old-pkgs.json --slurpfile n /tmp/new-pkgs.json '
   $o[0] as $o | $n[0] as $n
   | ([$n | keys[] | select($o[.] and $o[.].v != $n[.].v)
