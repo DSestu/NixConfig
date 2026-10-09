@@ -24,7 +24,7 @@
 #  Home Manager `pkgs` and in every NixOS profile's `nixpkgs.overlays`.
 #
 #  NOTE: this pins a package to an *older/different* nixpkgs than the main
-#  input. To go *newer* than nixpkgs has (e.g. gh-stack), there is no
+#  input. To go *newer* than nixpkgs has (e.g. code-cursor), there is no
 #  commit to pin to — use `overrideAttrs` at the use site instead.
 # ─────────────────────────────────────────────────────────────────────
 # Example/test entry: using lib.fakeHash as a placeholder SRI hash when defining a pin,

@@ -5,21 +5,6 @@
   ...
 }: let
   identity = import ../_user-identity.nix;
-  # nixpkgs lags upstream github/gh-stack (0.0.4 vs 0.0.8). Bump src +
-  # vendorHash until nixpkgs catches up; overrideAttrs propagates
-  # vendorHash to the internal goModules derivation.
-  gh-stack = pkgs.gh-stack.overrideAttrs (old: {
-    version = "0.0.8";
-    src = pkgs.fetchFromGitHub {
-      owner = "github";
-      repo = "gh-stack";
-      tag = "v0.0.8";
-      hash = "sha256-N0S/zQ+JsFAKzC780m3lwiZgsCoCjtcWgDB/MJy6jYU=";
-    };
-    vendorHash = "sha256-CxsHRC5AbApxcsavyaBmoPtTUHy5jlaQ7BLvgE6mJJ4=";
-    # v0.0.8 added Go integration tests that shell out to git.
-    nativeCheckInputs = (old.nativeCheckInputs or []) ++ [pkgs.git];
-  });
 in {
   imports = [
     ./dev/claude-code.nix
@@ -76,7 +61,7 @@ in {
 
   programs.gh = {
     enable = true;
-    extensions = [gh-stack];
+    extensions = [pkgs.gh-stack];
     settings = {
       git_protocol = "https";
       aliases.co = "pr checkout";
