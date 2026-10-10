@@ -146,4 +146,17 @@ in {
     # Opt-in flag the i-have-adhd SessionStart hook checks: present = always on.
     touch "$HOME/.claude/.i-have-adhd-always"
   '';
+
+  # User-scope MCP servers live in ~/.claude.json next to mutable session
+  # state, so merge the key rather than replace the file (same as dbhub.nix).
+  home.activation.claudeCodeSharedMcpServers = lib.hm.dag.entryAfter ["writeBoundary"] ''
+    claude_json="$HOME/.claude.json"
+    [ -f "$claude_json" ] || install -m 0600 /dev/stdin "$claude_json" <<<'{}'
+    ${pkgs.jq}/bin/jq --argjson servers ${
+      lib.escapeShellArg (toJSON sources.mcpServers)
+    } '.mcpServers = (.mcpServers // {}) * $servers' \
+      "$claude_json" > "$claude_json.hm-tmp"
+    install -m 0600 "$claude_json.hm-tmp" "$claude_json"
+    rm -f "$claude_json.hm-tmp"
+  '';
 }

@@ -27,6 +27,7 @@ in {
       tableplus
       lazydocker # docker TUI
       nodejs
+      ghidra # GUI + REA MCP's native-analysis provider (see dev/agent-sources.nix)
       bun
       nixd # Nix language server
       tmux # required at runtime by dmux

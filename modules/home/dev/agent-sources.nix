@@ -143,6 +143,35 @@
       hash = "sha256-5EYLKtrg0RQN0CHR51Sc2qSkgYklu6lqzuH87Dp3gv4=";
       skillsSubpath = "skills";
     };
+    # REA ships an npm package, not a plugin: the skill is pinned here and the
+    # MCP server (below, `mcpServers.rea`) runs the npm release cut from the
+    # same tag, so instructions and tools stay in step. Bump both together.
+    # Upstream main moved the skill to .agents/skills (next to a dev-only
+    # rea-tool-design skill), so re-check skillsSubpath on the next bump.
+    rea = {
+      owner = "morluto";
+      repo = "rea";
+      rev = "74cf9e1401fcd89482fe39c27cc898f5858e9b72"; # rea-agents-6.3.0
+      hash = "sha256-G9tMDswsVaHeNPf13czrUfJhtvAoYCpR7uWL6Ypn/4Q=";
+      skillsSubpath = "skill-src";
+    };
+  };
+
+  # ─── MCP servers shared by Claude Code and Cursor ───────────────────────
+  # Servers that don't come from a plugin's .mcp.json. claude-code.nix merges
+  # them into ~/.claude.json, cursor.nix into ~/.cursor/mcp.json.
+  mcpServers = {
+    # Ghidra is REA's native-analysis provider (it checks for 12.1.x). Paths
+    # are passed explicitly: MCP servers don't inherit a login shell's PATH.
+    rea = {
+      type = "stdio";
+      command = "${pkgs.nodejs}/bin/npx";
+      args = ["-y" "rea-agents@6.3.0" "mcp"];
+      env = {
+        GHIDRA_INSTALL_DIR = "${pkgs.ghidra}/lib/ghidra";
+        JAVA_HOME = "${pkgs.openjdk21}/lib/openjdk";
+      };
+    };
   };
 
   # ─── Derived state ──────────────────────────────────────────────────────
@@ -211,7 +240,7 @@
 
   joinTree = name: paths: pkgs.symlinkJoin {inherit name paths;};
 in {
-  inherit marketplaces skillRepos marketplaceSrcs skillRepoSrcs pluginEntries pluginRoots;
+  inherit marketplaces skillRepos marketplaceSrcs skillRepoSrcs pluginEntries pluginRoots mcpServers;
 
   # Claude Code loads plugin skills through the plugin loader (namespaced as
   # `plugin:skill`), so only the plain skill repos go in ~/.claude/skills.

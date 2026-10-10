@@ -56,17 +56,21 @@
   contextModeRoot = sources.pluginRoots."context-mode@context-mode";
 
   mcpAddition = {
-    mcpServers.claude-mem = {
-      type = "stdio";
-      command = "${pkgs.nodejs}/bin/node";
-      args = ["${memRoot}/scripts/mcp-server.cjs"];
-    };
-    # Same entrypoint the Claude plugin's plugin.json launches.
-    mcpServers.context-mode = {
-      type = "stdio";
-      command = "${pkgs.nodejs}/bin/node";
-      args = ["${contextModeRoot}/start.mjs"];
-    };
+    mcpServers =
+      sources.mcpServers
+      // {
+        claude-mem = {
+          type = "stdio";
+          command = "${pkgs.nodejs}/bin/node";
+          args = ["${memRoot}/scripts/mcp-server.cjs"];
+        };
+        # Same entrypoint the Claude plugin's plugin.json launches.
+        context-mode = {
+          type = "stdio";
+          command = "${pkgs.nodejs}/bin/node";
+          args = ["${contextModeRoot}/start.mjs"];
+        };
+      };
   };
 in {
   home.file = {
