@@ -151,8 +151,8 @@
     rea = {
       owner = "morluto";
       repo = "rea";
-      rev = "74cf9e1401fcd89482fe39c27cc898f5858e9b72"; # rea-agents-6.3.0
-      hash = "sha256-G9tMDswsVaHeNPf13czrUfJhtvAoYCpR7uWL6Ypn/4Q=";
+      rev = "3059d8a40f6dcf1e0709937ed1be2166d704bbaf"; # rea-agents-6.3.0
+      hash = "sha256-HslVVFlPx+gZon/bnngKHu6IeU1EVHwCGZV1sbpCwuM=";
       skillsSubpath = "skill-src";
     };
   };
