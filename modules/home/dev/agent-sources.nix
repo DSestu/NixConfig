@@ -85,8 +85,8 @@
     diagram-design = {
       owner = "cathrynlavery";
       repo = "diagram-design";
-      rev = "f4547ee95f88e5b28a52517feff6b6c11cc657f9";
-      hash = "sha256-L+2YqVybYQ892nLkaHSRKI4pjFcb506jhDz4U8ju6P8=";
+      rev = "7a2e22170ee838e859d8142ba825d83f8b6375e6";
+      hash = "sha256-5lE/qnr5x58DICBJWkbqw2dwPVxCfiMLbM4GLnlXKnI=";
       plugins = {
         diagram-design = {
           version = "2.6.18";
