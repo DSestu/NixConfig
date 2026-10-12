@@ -112,8 +112,8 @@
     thedotmack = {
       owner = "thedotmack";
       repo = "claude-mem";
-      rev = "fa8ab09f06aa05f958c5225cf3756ce52a3ebb96";
-      hash = "sha256-orbHBCbEVKbex+tCR+DCg9kz4aqmGyt3PqQcQ0qtOK4=";
+      rev = "356b7c08f64c29f931171e264e848772a039da62";
+      hash = "sha256-8rol0ZdhXJDphJtgFiKA6kMTZHFZzMmpIoJhrnWRbIw=";
       plugins = {
         claude-mem = {
           version = "13.35.0";
