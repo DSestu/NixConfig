@@ -78,6 +78,27 @@ in {
     settings = {
       # Use diffnav to view PR/issue diffs (the `d` key) instead of less.
       pager.diff = "diffnav";
+      # Setting prSections replaces gh-dash's defaults, so the last three
+      # re-declare them. "All open" has no repo: qualifier — smart filtering
+      # (on by default) scopes it to the repo gh-dash is launched from.
+      prSections = [
+        {
+          title = "All open";
+          filters = "is:open";
+        }
+        {
+          title = "My Pull Requests";
+          filters = "is:open author:@me";
+        }
+        {
+          title = "Needs My Review";
+          filters = "is:open review-requested:@me";
+        }
+        {
+          title = "Involved";
+          filters = "is:open involves:@me -author:@me";
+        }
+      ];
       # Fixes "local path to repo not specified": map owner/* -> local clone.
       # All repos are cloned flat under ~/github/<repo>; the value's trailing
       # /* is replaced with the repo name at checkout time.

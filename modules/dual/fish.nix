@@ -123,6 +123,35 @@
       end
     '';
 
+    # Dev workspace for the current git repo (or $PWD outside one), as one
+    # tmux session named after the repo root:
+    #   term / term │ gh dash │ diffnav / yazi
+    # Re-running it reattaches (or switch-clients) instead of rebuilding.
+    # tmux turns . and : in session names into _, so we do the same up front —
+    # otherwise has-session misses and every call tries to recreate it. `=`
+    # makes has-session match exactly rather than by prefix.
+    ws = ''
+      if not command -q sesh
+        echo "sesh is not installed on this host" >&2
+        return 1
+      end
+      set -l root (git rev-parse --show-toplevel 2>/dev/null); or set root $PWD
+      set -l s (string replace -ar '[.:]' _ (path basename $root))
+      if not tmux has-session -t "=$s" 2>/dev/null
+        # Pane ids (%N) stay fixed across splits; pane indices renumber.
+        set -l term (tmux new-session -d -s $s -c $root -P -F '#{pane_id}')
+        set -l dash (tmux split-window -h -l 66% -t $term -c $root -P -F '#{pane_id}' 'gh dash')
+        set -l diff (tmux split-window -h -l 50% -t $dash -c $root -P -F '#{pane_id}' 'diffnav --watch')
+        set -l yazi (tmux split-window -v -t $diff -c $root -P -F '#{pane_id}' yazi)
+        tmux split-window -v -t $term -c $root
+        # shortcut: yazi's terminal probe replies go to the active pane, so focus the
+        # term only after yazi has probed; raise the delay if Gi=… text leaks again.
+        tmux select-pane -t $yazi
+        tmux run-shell -b "sleep 1; tmux select-pane -t $term"
+      end
+      sesh connect $s
+    '';
+
     # Matrix-style typewriter greeting (randomized per-char delay), then a
     # one-line cheatsheet for the fuzzy finders:
     #   ctrl-f  browse user-defined functions (browse_functions)
@@ -134,6 +163,10 @@
     # …and a tmux line. prefix+S is ours (sesh, see modules/home/dev.nix);
     # prefix+s / prefix+d are tmux builtins. Printed only inside tmux, where
     # the bindings actually resolve.
+    # The `ws` hint shows only inside a git repo, and says open / resume /
+    # switch to depending on whether that repo's session exists and whether
+    # we're already in tmux. Silent in the workspace's own panes. The session
+    # name must match the one `ws` computes.
     fish_greeting = ''
       set_color brgreen
       set -l msg "Knock, knock, $USER."
@@ -150,6 +183,19 @@
       # tinted to match its Tide badge: ns=nix-blue, --=green, !=sand, @=violet,
       # -N=red (offline), -h=dim.
       printf "📦  %sns%s <pkg> run · <pkg> %s--%s shell · %s!%s isolated · %s@%s rehearse (reverts) · %s-N%s offline · ns %s-h%s\n" (set_color 7EBAE4) (set_color normal) (set_color 5FD700) (set_color normal) (set_color D7AF5F) (set_color normal) (set_color AF87FF) (set_color normal) (set_color CC0000) (set_color normal) (set_color 6C6C6C) (set_color normal)
+      set -l root (git rev-parse --show-toplevel 2>/dev/null)
+      if command -q sesh; and set -q root[1]
+        set -l s (string replace -ar '[.:]' _ (path basename $root))
+        set -l verb
+        if set -q TMUX
+          test (tmux display-message -p '#S') != $s; and set verb "switch to"
+        else if tmux has-session -t "=$s" 2>/dev/null
+          set verb resume
+        else
+          set verb open
+        end
+        set -q verb[1]; and printf "🧩  %sws%s → %s %s%s%s workspace\n" (set_color blue) (set_color normal) $verb (set_color --bold) $s (set_color normal)
+      end
       if set -q TMUX
         printf "🪟  %sctrl-b S%s sessions (sesh) · %sctrl-b s%s tree · %sctrl-b d%s detach · %sctrl-b w%s windows\n" (set_color blue) (set_color normal) (set_color blue) (set_color normal) (set_color blue) (set_color normal) (set_color blue) (set_color normal)
       end
