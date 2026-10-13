@@ -146,14 +146,17 @@
     # REA ships an npm package, not a plugin: the skill is pinned here and the
     # MCP server (below, `mcpServers.rea`) runs the npm release cut from the
     # same tag, so instructions and tools stay in step. Bump both together.
-    # Upstream main moved the skill to .agents/skills (next to a dev-only
-    # rea-tool-design skill), so re-check skillsSubpath on the next bump.
+    # autoUpdate = false keeps update-deps from moving this to upstream HEAD,
+    # which runs ahead of the npm release (and once broke the build by moving
+    # the skill dir). `skills` drops the dev-only skills that share the dir.
     rea = {
       owner = "morluto";
       repo = "rea";
-      rev = "fb28ec1537e2d02aaca96325483c849c5c8ade6f"; # rea-agents-6.3.0
-      hash = "sha256-pMknMLu4bGun4NpOLyg1r6Rw+f66BAPLGwiP7/EU8ug=";
-      skillsSubpath = "skill-src";
+      rev = "a56f7bb668ab23fec8d33f7af353ac7ed2fe1895"; # rea-agents-6.4.0
+      hash = "sha256-aAbOYpsT6QhlLAZDtVHZ1Acz6uIqrVEd4p49s/2FJgc=";
+      skillsSubpath = ".agents/skills";
+      skills = ["reverse-engineer-anything"];
+      autoUpdate = false;
     };
   };
 
@@ -166,7 +169,7 @@
     rea = {
       type = "stdio";
       command = "${pkgs.nodejs}/bin/npx";
-      args = ["-y" "rea-agents@6.3.0" "mcp"];
+      args = ["-y" "rea-agents@6.4.0" "mcp"];
       env = {
         GHIDRA_INSTALL_DIR = "${pkgs.ghidra}/lib/ghidra";
         JAVA_HOME = "${pkgs.openjdk21}/lib/openjdk";
@@ -232,10 +235,24 @@
       (wrapSkillDir e.skillRootName (pluginRootOf e)))
     pluginEntries;
 
-  skillRepoDirs = lib.mapAttrsToList (name: r:
-    if r.skillsSubpath == ""
-    then skillRepoSrcs.${name}
-    else "${skillRepoSrcs.${name}}/${r.skillsSubpath}")
+  # A repo with `skills` contributes only those <name>/ dirs; otherwise its
+  # whole skills dir is joined in. The filtered dirs are copied as real dirs
+  # of file symlinks (cp -rs), not wrapSkillDir's single dir symlink: the
+  # trees are linked with `recursive = true`, so a skill that was a real dir
+  # in ~/.claude/skills would collide with a symlink and fail activation.
+  skillRepoDirs = lib.mapAttrsToList (name: r: let
+    root =
+      if r.skillsSubpath == ""
+      then skillRepoSrcs.${name}
+      else "${skillRepoSrcs.${name}}/${r.skillsSubpath}";
+  in
+    if r ? skills
+    then
+      pkgs.runCommand "${name}-skills" {} ''
+        mkdir $out
+        ${lib.concatMapStrings (s: "cp -rs ${root}/${s} $out/\n") r.skills}
+      ''
+    else root)
   skillRepos;
 
   joinTree = name: paths: pkgs.symlinkJoin {inherit name paths;};
