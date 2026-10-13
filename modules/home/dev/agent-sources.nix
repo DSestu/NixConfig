@@ -69,8 +69,8 @@
     ponytail = {
       owner = "DietrichGebert";
       repo = "ponytail";
-      rev = "9cc65d03aa2da1db7121b912d03596409ee340b8";
-      hash = "sha256-diYM3gqcEboVi7OQff/SvlE0TKAIPTJDIggX7rZWslY=";
+      rev = "2961b52fc1fe6a5a87c7a959a79512e5c2f3ffe5";
+      hash = "sha256-3GopEvTySUvo0ghGz4CF6xbN7x3kbB/IHEY7Dwr4dls=";
       plugins = {
         ponytail = {
           version = "4.9.0";
