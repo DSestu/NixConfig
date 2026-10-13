@@ -125,7 +125,7 @@
 
     # Dev workspace for the current git repo (or $PWD outside one), as one
     # tmux session named after the repo root:
-    #   term / term │ gh dash │ diffnav / yazi
+    #   term / term (1/4) │ gh dash / diffnav (3/4)
     # Re-running it reattaches (or switch-clients) instead of rebuilding.
     # tmux turns . and : in session names into _, so we do the same up front —
     # otherwise has-session misses and every call tries to recreate it. `=`
@@ -140,14 +140,10 @@
       if not tmux has-session -t "=$s" 2>/dev/null
         # Pane ids (%N) stay fixed across splits; pane indices renumber.
         set -l term (tmux new-session -d -s $s -c $root -P -F '#{pane_id}')
-        set -l dash (tmux split-window -h -l 66% -t $term -c $root -P -F '#{pane_id}' 'gh dash')
-        set -l diff (tmux split-window -h -l 50% -t $dash -c $root -P -F '#{pane_id}' 'diffnav --watch')
-        set -l yazi (tmux split-window -v -t $diff -c $root -P -F '#{pane_id}' yazi)
+        set -l dash (tmux split-window -h -l 75% -t $term -c $root -P -F '#{pane_id}' 'gh dash')
+        tmux split-window -v -t $dash -c $root 'diffnav --watch'
         tmux split-window -v -t $term -c $root
-        # shortcut: yazi's terminal probe replies go to the active pane, so focus the
-        # term only after yazi has probed; raise the delay if Gi=… text leaks again.
-        tmux select-pane -t $yazi
-        tmux run-shell -b "sleep 1; tmux select-pane -t $term"
+        tmux select-pane -t $term
       end
       sesh connect $s
     '';
