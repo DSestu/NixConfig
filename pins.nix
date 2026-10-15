@@ -38,8 +38,8 @@
   # quarto: held at nixos-25.05. quarto 1.8.x ships a jog.lua filter that
   # can't traverse pandoc's TableBody AST node, breaking table rendering.
   quarto = {
-    # 1.7.34
-    rev = "5d6bdbddb4695a62f0d00a3620b37a15275a5093";
-    hash = "sha256:0yih1ll0kihp675622q3l201j527y8841lsw4n4axc1n9152jm4f";
+    # 1.10.18
+    rev = "55bfb4d7437bd4e09ab7cba58a43bd68eb310044";
+    hash = "sha256:02sljlk6abwqsx32nhjmfbm7hki7nvcsg442ldp0yx9f5qz0c5lc";
   };
 }
