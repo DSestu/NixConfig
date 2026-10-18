@@ -99,8 +99,8 @@
     context-mode = {
       owner = "mksglu";
       repo = "context-mode";
-      rev = "1a1bed139906ecc048233583bb2fd29290603b7a";
-      hash = "sha256-wkUlVaNivz3dFi10VRCqCxePuJaXXKoo1a0kX8PFg1k=";
+      rev = "dad48de75686389612bba9ef842e459ee38134cd";
+      hash = "sha256-LRDED4cTiRTut7C4dS+iDGwmNAnbvLOWUQCSem0TOfU=";
       plugins = {
         context-mode = {
           version = "1.0.169";
