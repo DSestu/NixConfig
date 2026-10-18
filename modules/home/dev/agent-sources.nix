@@ -112,11 +112,11 @@
     thedotmack = {
       owner = "thedotmack";
       repo = "claude-mem";
-      rev = "a2150b2c09c6da01dfdc1296f8d2c3f3975a4418";
-      hash = "sha256-W0grc9JQsXbgMqGqFmycS5BLs0Z9O97DZSlyAIhIrhM=";
+      rev = "b85cd123daf8e5bd59edb2d1c7b98e0bba28b3a0";
+      hash = "sha256-Gily9VzCtRT1+t2Z1pKLLR8WoW0EPX/250vBmLY/iZE=";
       plugins = {
         claude-mem = {
-          version = "13.37.0";
+          version = "14.0.1";
           pluginSubpath = "plugin";
           skillsSubpath = "skills";
         };
