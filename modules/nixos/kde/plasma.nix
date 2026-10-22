@@ -115,6 +115,12 @@ in {
       "services/org.kde.krunner.desktop"._launch = ["Meta+R" "Search"];
       "services/org.kde.spectacle.desktop".RecordRegion = "Meta+Shift+R";
     };
+    # plasma-manager writes kuriikwsfilterrc from these; setting it via configFile conflicts.
+    searchPlugins.webSearchKeywords = {
+      default = "brave";
+      delimiter = ":";
+      preferred = ["google" "youtube" "yahoo" "wikipedia" "wikit"];
+    };
     configFile = {
       dolphinrc.General.LockPanels = false;
       dolphinrc.General.ViewPropsTimestamp = "2025,10,20,17,36,1.412";
@@ -178,11 +184,6 @@ in {
       krunnerrc.General.historyBehavior = "ImmediateCompletion";
       krunnerrc.Plugins.browserhistoryEnabled = false;
       krunnerrc."Plugins/Favorites".plugins = "krunner_sessions,krunner_powerdevil,krunner_services,krunner_systemsettings";
-      kuriikwsfilterrc.General.DefaultWebShortcut = "brave";
-      kuriikwsfilterrc.General.EnableWebShortcuts = true;
-      kuriikwsfilterrc.General.KeywordDelimiter = ":";
-      kuriikwsfilterrc.General.PreferredWebShortcuts = "google,youtube,yahoo,wikipedia,wikit";
-      kuriikwsfilterrc.General.UsePreferredWebShortcutsOnly = false;
       kwalletrc.Wallet."Close When Idle" = false;
       kwalletrc.Wallet."Close on Screensaver" = false;
       kwalletrc.Wallet."Default Wallet" = "kdewallet";
