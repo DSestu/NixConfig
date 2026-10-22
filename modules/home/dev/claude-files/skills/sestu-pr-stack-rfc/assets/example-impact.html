@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Northwind stack · Airflow and DWH impact</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Mulish:wght@400;600;700&amp;family=Geist+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --paper: #f7f9fa; --ink: #2a3540; --muted: #52667a; --soft: #677279;
+      --accent: #2a8013; --link: #203a9a;
+      --sans: 'Mulish', system-ui, sans-serif; --serif: 'Instrument Serif', serif;
+      --mono: 'Geist Mono', ui-monospace, monospace;
+    }
+    body { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 3rem 2rem; background: var(--paper); color: var(--ink); font-family: var(--sans); }
+    .frame { width: 100%; max-width: 1200px; }
+    .eyebrow { margin-bottom: 0.5rem; color: var(--muted); font: 500 0.66rem var(--mono); letter-spacing: 0.18em; text-transform: uppercase; }
+    h1 { margin-bottom: 1.5rem; color: var(--ink); font: 400 clamp(1.5rem, 2.4vw + 0.75rem, 2rem)/1.15 var(--serif); letter-spacing: -0.02em; }
+    .scroll { overflow-x: auto; }
+    svg { display: block; width: 100%; min-width: 960px; }
+    .name { fill: var(--ink); font: 700 12px var(--sans); text-anchor: middle; }
+    .sub { fill: var(--muted); font: 400 9px var(--mono); text-anchor: middle; }
+    .tag { font: 500 7px var(--mono); letter-spacing: 0.08em; text-anchor: middle; }
+    .pr { fill: var(--soft); font: 500 8px var(--mono); text-anchor: end; }
+    .zone { fill: var(--soft); font: 500 7px var(--mono); letter-spacing: 0.14em; text-anchor: middle; }
+    .label { font: 400 8px var(--mono); letter-spacing: 0.06em; text-anchor: middle; }
+    .legend-head { fill: var(--muted); font: 500 8px var(--mono); letter-spacing: 0.14em; }
+    .legend-text { fill: var(--muted); font: 400 9px var(--sans); }
+  </style>
+</head>
+<body>
+  <main class="frame">
+    <p class="eyebrow">Architecture · Northwind stack, PRs #101 to #104</p>
+    <h1>What the Northwind PRs change in Airflow and the DWH</h1>
+
+    <div class="scroll">
+    <svg viewBox="0 0 960 548" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="example-impact-title example-impact-desc">
+      <title id="example-impact-title">Northwind stack: Airflow and DWH impact</title>
+      <desc id="example-impact-desc">The Northwind PRs add a production-only load source, a push DAG and a northwind DWH schema, and change two pieces of shared code, IngestOperator and the push engine, which existing DAGs keep using with unchanged defaults.</desc>
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#52667a"/></marker>
+        <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2a8013"/></marker>
+        <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#203a9a"/></marker>
+      </defs>
+      <rect width="960" height="548" fill="#f7f9fa"/>
+
+      <!-- Zones -->
+      <rect x="184" y="56" width="456" height="376" rx="8" fill="rgba(42,53,64,0.02)" stroke="rgba(42,53,64,0.10)" stroke-width="0.8"/>
+      <rect x="320" y="60" width="184" height="12" rx="2" fill="#f7f9fa"/>
+      <text x="412" y="69" class="zone">AIRFLOW · PRODUCTION ONLY</text>
+      <rect x="672" y="56" width="264" height="376" rx="8" fill="rgba(42,53,64,0.02)" stroke="rgba(42,53,64,0.10)" stroke-width="0.8"/>
+      <rect x="780" y="60" width="48" height="12" rx="2" fill="#f7f9fa"/>
+      <text x="804" y="69" class="zone">DWH</text>
+
+      <!-- Connectors (before nodes) -->
+      <path d="M152 128 H208" fill="none" stroke="#203a9a" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+      <path d="M384 128 H440" fill="none" stroke="#52667a" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <path d="M616 128 H696" fill="none" stroke="#52667a" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <path d="M696 184 H660 Q652 184 652 192 V348 Q652 356 644 356 H616" fill="none" stroke="#52667a" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <path d="M696 380 H616" fill="none" stroke="#52667a" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <path d="M440 368 H384" fill="none" stroke="#52667a" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <path d="M208 368 H152" fill="none" stroke="#203a9a" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+      <path d="M528 208 V168" fill="none" stroke="#52667a" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+      <path d="M528 288 V328" fill="none" stroke="#52667a" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+
+      <!-- Arrow labels -->
+      <rect x="164" y="110" width="32" height="12" rx="2" fill="#f7f9fa"/>
+      <text x="180" y="119" class="label" fill="#203a9a">READ</text>
+      <rect x="632" y="110" width="48" height="12" rx="2" fill="#f7f9fa"/>
+      <text x="656" y="119" class="label" fill="#677279">UPSERT</text>
+      <rect x="392" y="350" width="40" height="12" rx="2" fill="#f7f9fa"/>
+      <text x="412" y="359" class="label" fill="#677279">DIFFS</text>
+      <rect x="160" y="350" width="40" height="12" rx="2" fill="#f7f9fa"/>
+      <text x="180" y="359" class="label" fill="#203a9a">WRITE</text>
+
+      <!-- Northwind CRM (external) -->
+      <rect x="24" y="88" width="128" height="320" rx="6" fill="#f7f9fa"/>
+      <rect x="24" y="88" width="128" height="320" rx="6" fill="rgba(42,53,64,0.03)" stroke="rgba(42,53,64,0.30)"/>
+      <rect x="32" y="96" width="48" height="12" rx="2" fill="none" stroke="rgba(42,53,64,0.40)" stroke-width="0.8"/>
+      <text x="56" y="105" class="tag" fill="#52667a">EXTERNAL</text>
+      <text x="88" y="236" class="name">Northwind CRM</text>
+      <text x="88" y="252" class="sub">region eu</text>
+      <text x="88" y="264" class="sub">id 1234567</text>
+      <text x="88" y="284" class="sub">token in SSM</text>
+      <text x="88" y="296" class="sub">crm_northwind_eu</text>
+
+      <!-- Northwind load source (new) -->
+      <rect x="208" y="88" width="176" height="80" rx="6" fill="#f7f9fa"/>
+      <rect x="208" y="88" width="176" height="80" rx="6" fill="#ffffff" stroke="#2a3540"/>
+      <rect x="216" y="96" width="28" height="12" rx="2" fill="none" stroke="rgba(42,53,64,0.40)" stroke-width="0.8"/>
+      <text x="230" y="105" class="tag" fill="#2a3540">NEW</text>
+      <text x="376" y="105" class="pr">#102</text>
+      <text x="296" y="128" class="name">Northwind load source</text>
+      <text x="296" y="144" class="sub">loader.py · loader.conf</text>
+      <text x="296" y="156" class="sub">refresh SQL · daily 04:00</text>
+
+      <!-- IngestOperator (changed, shared) -->
+      <rect x="440" y="88" width="176" height="80" rx="6" fill="#f7f9fa"/>
+      <rect x="440" y="88" width="176" height="80" rx="6" fill="rgba(42,128,19,0.08)" stroke="#2a8013" stroke-width="1.2"/>
+      <rect x="448" y="96" width="48" height="12" rx="2" fill="none" stroke="rgba(42,128,19,0.60)" stroke-width="0.8"/>
+      <text x="472" y="105" class="tag" fill="#2a8013">CHANGED</text>
+      <text x="608" y="105" class="pr">#102</text>
+      <text x="528" y="128" class="name">IngestOperator</text>
+      <text x="528" y="144" class="sub">+ schema per flow</text>
+      <text x="528" y="156" class="sub">+ connection per flow</text>
+
+      <!-- Existing DAGs (other callers) -->
+      <rect x="440" y="208" width="176" height="80" rx="6" fill="#f7f9fa"/>
+      <rect x="440" y="208" width="176" height="80" rx="6" fill="rgba(42,53,64,0.02)" stroke="rgba(42,53,64,0.20)" stroke-dasharray="4,3"/>
+      <rect x="448" y="216" width="52" height="12" rx="2" fill="none" stroke="rgba(42,53,64,0.40)" stroke-width="0.8"/>
+      <text x="474" y="225" class="tag" fill="#52667a">EXISTING</text>
+      <text x="528" y="248" class="name">Existing DAGs</text>
+      <text x="528" y="264" class="sub">same defaults:</text>
+      <text x="528" y="276" class="sub">raw · crm_default</text>
+
+      <!-- Push engine (changed, shared) -->
+      <rect x="440" y="328" width="176" height="80" rx="6" fill="#f7f9fa"/>
+      <rect x="440" y="328" width="176" height="80" rx="6" fill="rgba(42,128,19,0.08)" stroke="#2a8013" stroke-width="1.2"/>
+      <rect x="448" y="336" width="48" height="12" rx="2" fill="none" stroke="rgba(42,128,19,0.60)" stroke-width="0.8"/>
+      <text x="472" y="345" class="tag" fill="#2a8013">CHANGED</text>
+      <text x="608" y="345" class="pr">#103</text>
+      <text x="528" y="368" class="name">Push engine</text>
+      <text x="528" y="384" class="sub">diff_rows(params)</text>
+      <text x="528" y="396" class="sub">push_batch(conn_id)</text>
+
+      <!-- Northwind push DAG (new) -->
+      <rect x="208" y="328" width="176" height="80" rx="6" fill="#f7f9fa"/>
+      <rect x="208" y="328" width="176" height="80" rx="6" fill="#ffffff" stroke="#2a3540"/>
+      <rect x="216" y="336" width="28" height="12" rx="2" fill="none" stroke="rgba(42,53,64,0.40)" stroke-width="0.8"/>
+      <text x="230" y="345" class="tag" fill="#2a3540">NEW</text>
+      <text x="376" y="345" class="pr">#104</text>
+      <text x="296" y="368" class="name">Northwind push DAG</text>
+      <text x="296" y="384" class="sub">push_crm_northwind_eu</text>
+      <text x="296" y="396" class="sub">dry_run · check_region</text>
+
+      <!-- northwind schema (new) -->
+      <rect x="696" y="88" width="216" height="120" rx="6" fill="#f7f9fa"/>
+      <rect x="696" y="88" width="216" height="120" rx="6" fill="#ffffff" stroke="#2a3540"/>
+      <rect x="704" y="96" width="28" height="12" rx="2" fill="none" stroke="rgba(42,53,64,0.40)" stroke-width="0.8"/>
+      <text x="718" y="105" class="tag" fill="#2a3540">NEW</text>
+      <text x="904" y="105" class="pr">#101 · #102</text>
+      <text x="804" y="132" class="name">northwind schema</text>
+      <text x="804" y="148" class="sub">crm_contacts (region, id)</text>
+      <text x="804" y="160" class="sub">buffer_crm_contacts</text>
+      <text x="804" y="180" class="sub">Terraform grants · V42</text>
+
+      <!-- core (existing, read only) -->
+      <rect x="696" y="328" width="216" height="80" rx="6" fill="#f7f9fa"/>
+      <rect x="696" y="328" width="216" height="80" rx="6" fill="rgba(42,53,64,0.02)" stroke="rgba(42,53,64,0.20)" stroke-dasharray="4,3"/>
+      <rect x="704" y="336" width="52" height="12" rx="2" fill="none" stroke="rgba(42,53,64,0.40)" stroke-width="0.8"/>
+      <text x="730" y="345" class="tag" fill="#52667a">READ ONLY</text>
+      <text x="804" y="368" class="name">core</text>
+      <text x="804" y="384" class="sub">users · accounts</text>
+      <text x="804" y="396" class="sub">plans · visits</text>
+
+      <!-- Legend -->
+      <line x1="24" y1="456" x2="936" y2="456" stroke="rgba(42,53,64,0.10)" stroke-width="0.8"/>
+      <text x="24" y="484" class="legend-head">NODES</text>
+      <rect x="104" y="474" width="24" height="14" rx="3" fill="#ffffff" stroke="#2a3540"/>
+      <text x="136" y="485" class="legend-text">New in the stack</text>
+      <rect x="264" y="474" width="24" height="14" rx="3" fill="rgba(42,128,19,0.08)" stroke="#2a8013" stroke-width="1.2"/>
+      <text x="296" y="485" class="legend-text">Changed shared code: review against existing callers</text>
+      <rect x="600" y="474" width="24" height="14" rx="3" fill="rgba(42,53,64,0.02)" stroke="rgba(42,53,64,0.20)" stroke-dasharray="4,3"/>
+      <text x="632" y="485" class="legend-text">Existing, not modified</text>
+      <text x="24" y="520" class="legend-head">FLOW</text>
+      <line x1="104" y1="516" x2="128" y2="516" stroke="#52667a" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <text x="136" y="519" class="legend-text">Data in Airflow or the DWH</text>
+      <line x1="264" y1="516" x2="288" y2="516" stroke="#203a9a" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+      <text x="296" y="519" class="legend-text">CRM API call</text>
+      <line x1="424" y1="516" x2="448" y2="516" stroke="#52667a" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+      <text x="456" y="519" class="legend-text">Also calls this code</text>
+    </svg>
+    </div>
+  </main>
+</body>
+</html>
