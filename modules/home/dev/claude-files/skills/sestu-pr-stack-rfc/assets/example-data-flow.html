@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Northwind usage sync · Data flow</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Mulish:wght@400;600;700&amp;family=Geist+Mono:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --paper: #f7f9fa; --paper-2: #ebeef0; --ink: #2a3540; --muted: #52667a;
+      --soft: #677279; --rule: rgba(42,53,64,0.12); --accent: #2a8013;
+      --accent-tint: rgba(42,128,19,0.08); --link: #203a9a;
+      --sans: 'Mulish', system-ui, sans-serif; --serif: 'Instrument Serif', serif;
+      --mono: 'Geist Mono', ui-monospace, monospace;
+    }
+    body { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 3rem 2rem; background: var(--paper); color: var(--ink); font-family: var(--sans); }
+    .frame { width: 100%; max-width: 1200px; }
+    .eyebrow { margin-bottom: 0.5rem; color: var(--muted); font: 500 0.66rem var(--mono); letter-spacing: 0.18em; text-transform: uppercase; }
+    h1 { margin-bottom: 1.5rem; color: var(--ink); font: 400 clamp(1.5rem, 2.4vw + 0.75rem, 2rem)/1.15 var(--serif); letter-spacing: -0.02em; }
+    .scroll { overflow-x: auto; }
+    svg { display: block; width: 100%; min-width: 728px; }
+    .step-number, .step-label, .lane-label, .role-text, .chip-text, .legend-label { font-family: var(--mono); text-anchor: middle; }
+    .step-number { fill: var(--ink); font-size: 7px; font-weight: 600; }
+    .step-label { fill: var(--muted); font-size: 7px; font-weight: 500; letter-spacing: 0.12em; }
+    .lane-label { fill: var(--muted); font-size: 8px; font-weight: 500; letter-spacing: 0.14em; }
+    .role-text { fill: var(--ink); font-size: 6px; font-weight: 600; }
+    .node-title { fill: var(--ink); font: 700 9px var(--sans); text-anchor: middle; }
+    .node-sub { fill: var(--muted); font: 400 6.5px var(--mono); text-anchor: middle; }
+    .node-tool { fill: var(--soft); font: 400 6.5px var(--mono); text-anchor: middle; }
+    .chip-text { fill: #fff; font-size: 5px; font-weight: 700; }
+    .focal-text { fill: var(--accent); }
+    .legend-label { fill: var(--muted); font-size: 7px; font-weight: 500; letter-spacing: 0.12em; text-anchor: end; }
+    .legend-text { fill: var(--muted); font: 400 7px var(--sans); }
+  </style>
+</head>
+<body>
+  <main class="frame">
+    <p class="eyebrow">Data flow · Northwind CRM sync</p>
+    <h1>Usage scores pushed to Northwind's CRM regions</h1>
+
+    <div class="scroll">
+    <svg viewBox="0 0 728 436" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="example-data-flow-title example-data-flow-desc">
+      <title id="example-data-flow-title">Northwind usage sync data flow</title>
+      <desc id="example-data-flow-desc">Airflow loads contacts from a partner's CRM regions into the northwind DWH schema, matches them by email to our users, and pushes the changed usage properties back after region, dry-run and failure-rate guards.</desc>
+      <defs>
+        <pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="11" cy="11" r="0.8" fill="rgba(42,53,64,0.10)"/></pattern>
+        <marker id="arr-muted" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 Z" fill="#52667a"/></marker>
+        <marker id="arr-accent" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 Z" fill="#2a8013"/></marker>
+        <marker id="arr-link" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 Z" fill="#203a9a"/></marker>
+      </defs>
+      <rect width="728" height="436" fill="#f7f9fa"/>
+      <rect width="728" height="436" fill="url(#dots)"/>
+      <rect x="0" y="36" width="728" height="80" fill="rgba(42,53,64,0.018)"/>
+      <rect x="0" y="196" width="728" height="80" fill="rgba(42,53,64,0.018)"/>
+
+      <!-- Header and lane structure -->
+      <line x1="0" y1="36" x2="728" y2="36" stroke="rgba(42,53,64,0.12)" stroke-width="0.8"/>
+      <line x1="0" y1="116" x2="728" y2="116" stroke="rgba(42,53,64,0.12)" stroke-width="0.8"/>
+      <line x1="0" y1="196" x2="728" y2="196" stroke="rgba(42,53,64,0.12)" stroke-width="0.8"/>
+      <line x1="0" y1="276" x2="728" y2="276" stroke="rgba(42,53,64,0.12)" stroke-width="0.8"/>
+      <line x1="0" y1="356" x2="728" y2="356" stroke="rgba(42,53,64,0.12)" stroke-width="0.8"/>
+      <line x1="140" y1="36" x2="140" y2="356" stroke="rgba(42,53,64,0.12)" stroke-width="0.8"/>
+
+      <g aria-label="Pipeline steps">
+        <rect x="180" y="6" width="32" height="16" rx="8" fill="rgba(42,53,64,0.12)"/><text x="196" y="14" class="step-number">01</text><text x="196" y="29" class="step-label">LOAD</text>
+        <rect x="292" y="6" width="32" height="16" rx="8" fill="rgba(42,53,64,0.12)"/><text x="308" y="14" class="step-number">02</text><text x="308" y="29" class="step-label">STORE</text>
+        <rect x="404" y="6" width="32" height="16" rx="8" fill="rgba(42,53,64,0.12)"/><text x="420" y="14" class="step-number">03</text><text x="420" y="29" class="step-label">MATCH</text>
+        <rect x="516" y="6" width="32" height="16" rx="8" fill="rgba(42,128,19,0.20)"/><text x="532" y="14" class="step-number focal-text">04</text><text x="532" y="29" class="step-label focal-text">GUARD</text>
+        <rect x="628" y="6" width="32" height="16" rx="8" fill="rgba(42,53,64,0.12)"/><text x="644" y="14" class="step-number">05</text><text x="644" y="29" class="step-label">PUSH</text>
+      </g>
+
+      <g aria-label="Lanes">
+        <text x="70" y="72" class="lane-label">Northwind</text><text x="70" y="84" class="lane-label">CRM</text>
+        <text x="70" y="152" class="lane-label">AIRFLOW</text><text x="70" y="164" class="lane-label">PROD ONLY</text>
+        <text x="70" y="232" class="lane-label">DWH</text><text x="70" y="244" class="lane-label">NORTHWIND SCHEMA</text>
+        <text x="70" y="312" class="lane-label">DWH</text><text x="70" y="324" class="lane-label">CORE DATA</text>
+      </g>
+
+      <!-- Connectors first. Cross-lane paths use r=8 orthogonal elbows. -->
+      <path d="M196 108 V124" fill="none" stroke="#52667a" marker-end="url(#arr-muted)"/>
+      <path d="M246 156 H300 Q308 156 308 164 V204" fill="none" stroke="#52667a" marker-end="url(#arr-muted)"/>
+      <path d="M358 236 H370" fill="none" stroke="#52667a" marker-end="url(#arr-muted)"/>
+      <path d="M358 316 H412 Q420 316 420 308 V268" fill="none" stroke="#52667a" marker-end="url(#arr-muted)"/>
+      <path d="M470 236 H524 Q532 236 532 228 V188" fill="none" stroke="#2a8013" stroke-width="1.2" marker-end="url(#arr-accent)"/>
+      <path d="M582 156 H594" fill="none" stroke="#52667a" marker-end="url(#arr-muted)"/>
+      <path d="M644 124 V108" fill="none" stroke="#203a9a" marker-end="url(#arr-link)"/>
+      <rect x="480" y="218" width="36" height="12" rx="2" fill="#f7f9fa"/>
+      <text x="498" y="227" fill="#2a8013" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">DIFFS</text>
+
+      <!-- Northwind: regions -->
+      <rect x="146" y="44" width="100" height="64" rx="6" fill="rgba(42,53,64,0.03)" stroke="rgba(42,53,64,0.30)"/>
+      <rect x="150" y="48" width="18" height="10" rx="3" fill="rgba(42,53,64,0.12)"/><text x="159" y="53" class="role-text">CRM</text>
+      <text x="196" y="67" class="node-title">CRM regions</text><text x="196" y="79" class="node-sub">EU live · 2 waiting</text><text x="196" y="91" class="node-tool">120,000 EU contacts</text>
+      <rect x="226" y="98" width="16" height="8" rx="3" fill="#6e6479"/><text x="234" y="104" class="chip-text">WB</text>
+
+      <!-- Airflow: load -->
+      <rect x="146" y="124" width="100" height="64" rx="6" fill="#ffffff" stroke="rgba(42,53,64,0.25)"/>
+      <rect x="150" y="128" width="18" height="10" rx="3" fill="rgba(42,53,64,0.12)"/><text x="159" y="133" class="role-text">AIR</text>
+      <text x="196" y="147" class="node-title">Load DAG</text><text x="196" y="159" class="node-sub">1 flow per region</text><text x="196" y="171" class="node-tool">loader.conf · #102</text>
+      <rect x="150" y="178" width="16" height="8" rx="3" fill="#6e6479"/><text x="158" y="184" class="chip-text">WB</text>
+      <rect x="226" y="178" width="16" height="8" rx="3" fill="#b8915a"/><text x="234" y="184" class="chip-text">TB</text>
+
+      <!-- DWH northwind: contacts -->
+      <rect x="258" y="204" width="100" height="64" rx="6" fill="rgba(42,53,64,0.05)" stroke="#52667a"/>
+      <rect x="262" y="208" width="18" height="10" rx="3" fill="rgba(42,53,64,0.12)"/><text x="271" y="213" class="role-text">NWD</text>
+      <text x="308" y="227" class="node-title">crm_contacts</text><text x="308" y="239" class="node-sub">key (region, id)</text><text x="308" y="251" class="node-tool">northwind · #101</text>
+      <rect x="262" y="258" width="16" height="8" rx="3" fill="#b8915a"/><text x="270" y="264" class="chip-text">TB</text>
+      <rect x="338" y="258" width="16" height="8" rx="3" fill="#b8915a"/><text x="346" y="264" class="chip-text">TB</text>
+
+      <!-- DWH core: users -->
+      <rect x="258" y="284" width="100" height="64" rx="6" fill="rgba(42,53,64,0.05)" stroke="#52667a"/>
+      <rect x="262" y="288" width="18" height="10" rx="3" fill="rgba(42,53,64,0.12)"/><text x="271" y="293" class="role-text">COR</text>
+      <text x="308" y="307" class="node-title">Our users</text><text x="308" y="319" class="node-sub">users · plans · visits</text><text x="308" y="331" class="node-tool">core</text>
+      <rect x="338" y="338" width="16" height="8" rx="3" fill="#b8915a"/><text x="346" y="344" class="chip-text">TB</text>
+
+      <!-- DWH northwind: match and diff -->
+      <rect x="370" y="204" width="100" height="64" rx="6" fill="#ffffff" stroke="rgba(42,53,64,0.25)"/>
+      <rect x="374" y="208" width="18" height="10" rx="3" fill="rgba(42,53,64,0.12)"/><text x="383" y="213" class="role-text">NWD</text>
+      <text x="420" y="227" class="node-title">Match + diff</text><text x="420" y="239" class="node-sub">DWH vs CRM values</text><text x="420" y="251" class="node-tool">push SQL · #104</text>
+      <rect x="374" y="258" width="16" height="8" rx="3" fill="#b8915a"/><text x="382" y="264" class="chip-text">TB</text>
+      <rect x="450" y="258" width="16" height="8" rx="3" fill="#b8915a"/><text x="458" y="264" class="chip-text">TB</text>
+
+      <!-- Airflow: guards (focal) -->
+      <rect x="482" y="124" width="100" height="64" rx="6" fill="rgba(42,128,19,0.07)" stroke="#2a8013" stroke-width="1.2"/>
+      <rect x="486" y="128" width="18" height="10" rx="3" fill="rgba(42,128,19,0.20)"/><text x="495" y="133" class="role-text focal-text">AIR</text>
+      <text x="532" y="147" class="node-title">Region guards</text><text x="532" y="159" class="node-sub">regionId · dry_run</text><text x="532" y="171" class="node-tool">check_region · #104</text>
+      <rect x="486" y="178" width="16" height="8" rx="3" fill="#b8915a"/><text x="494" y="184" class="chip-text">TB</text>
+      <rect x="562" y="178" width="16" height="8" rx="3" fill="#b8915a"/><text x="570" y="184" class="chip-text">TB</text>
+
+      <!-- Airflow: push -->
+      <rect x="594" y="124" width="100" height="64" rx="6" fill="#ffffff" stroke="rgba(42,53,64,0.25)"/>
+      <rect x="598" y="128" width="18" height="10" rx="3" fill="rgba(42,53,64,0.12)"/><text x="607" y="133" class="role-text">AIR</text>
+      <text x="644" y="147" class="node-title">Daily push 06:00</text><text x="644" y="159" class="node-sub">fail if &lt;50% accepted</text><text x="644" y="171" class="node-tool">push engine · #103</text>
+      <rect x="598" y="178" width="16" height="8" rx="3" fill="#b8915a"/><text x="606" y="184" class="chip-text">TB</text>
+      <rect x="674" y="178" width="16" height="8" rx="3" fill="#6e6479"/><text x="682" y="184" class="chip-text">WB</text>
+
+      <!-- Northwind: properties -->
+      <rect x="594" y="44" width="100" height="64" rx="6" fill="rgba(42,53,64,0.03)" stroke="rgba(42,53,64,0.30)"/>
+      <rect x="598" y="48" width="18" height="10" rx="3" fill="rgba(42,53,64,0.12)"/><text x="607" y="53" class="role-text">CRM</text>
+      <text x="644" y="67" class="node-title">Usage properties</text><text x="644" y="79" class="node-sub">on matched contacts</text><text x="644" y="91" class="node-tool">2 still to create</text>
+      <rect x="598" y="98" width="16" height="8" rx="3" fill="#6e6479"/><text x="606" y="104" class="chip-text">WB</text>
+
+      <!-- Legend: steps -->
+      <text x="164" y="375" class="legend-label">STEPS</text>
+      <rect x="180" y="366" width="24" height="12" rx="6" fill="rgba(42,53,64,0.12)"/><text x="192" y="374" class="step-number">01</text><text x="212" y="375" class="legend-text">Load</text>
+      <rect x="272" y="366" width="24" height="12" rx="6" fill="rgba(42,53,64,0.12)"/><text x="284" y="374" class="step-number">02</text><text x="304" y="375" class="legend-text">Store</text>
+      <rect x="360" y="366" width="24" height="12" rx="6" fill="rgba(42,53,64,0.12)"/><text x="372" y="374" class="step-number">03</text><text x="392" y="375" class="legend-text">Match</text>
+      <rect x="468" y="366" width="24" height="12" rx="6" fill="rgba(42,128,19,0.20)"/><text x="480" y="374" class="step-number focal-text">04</text><text x="500" y="375" class="legend-text">Guard</text>
+      <rect x="568" y="366" width="24" height="12" rx="6" fill="rgba(42,53,64,0.12)"/><text x="580" y="374" class="step-number">05</text><text x="600" y="375" class="legend-text">Push</text>
+
+      <!-- Legend: data types -->
+      <text x="164" y="396" class="legend-label">DATA TYPE</text>
+      <rect x="180" y="388" width="16" height="8" rx="3" fill="#6e6479"/><text x="188" y="394" class="chip-text">WB</text><text x="202" y="396" class="legend-text">CRM API</text>
+      <rect x="272" y="388" width="16" height="8" rx="3" fill="#b8915a"/><text x="280" y="394" class="chip-text">TB</text><text x="294" y="396" class="legend-text">DWH table</text>
+      <text x="360" y="396" class="legend-text">left chip = input · right chip = output · #PR = code</text>
+
+      <!-- Legend: flow -->
+      <text x="164" y="418" class="legend-label">FLOW</text>
+      <line x1="180" y1="415" x2="204" y2="415" stroke="#52667a" marker-end="url(#arr-muted)"/><text x="212" y="418" class="legend-text">Data handoff</text>
+      <line x1="324" y1="415" x2="348" y2="415" stroke="#2a8013" stroke-width="1.2" marker-end="url(#arr-accent)"/><text x="356" y="418" class="legend-text">Changed values only</text>
+      <line x1="460" y1="415" x2="484" y2="415" stroke="#203a9a" marker-end="url(#arr-link)"/><text x="492" y="418" class="legend-text">Write to the partner's live CRM</text>
+    </svg>
+    </div>
+  </main>
+</body>
+</html>

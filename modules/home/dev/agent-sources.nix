@@ -255,19 +255,23 @@
     else root)
   skillRepos;
 
+  # Skills written in this repo (<name>/SKILL.md dirs), not pinned upstream.
+  localSkillsDir = ./claude-files/skills;
+
   joinTree = name: paths: pkgs.symlinkJoin {inherit name paths;};
 in {
   inherit marketplaces skillRepos marketplaceSrcs skillRepoSrcs pluginEntries pluginRoots mcpServers;
 
   # Claude Code loads plugin skills through the plugin loader (namespaced as
-  # `plugin:skill`), so only the plain skill repos go in ~/.claude/skills.
-  claudeSkillsTree = joinTree "claude-skills" skillRepoDirs;
+  # `plugin:skill`), so only the plain skill repos and local skills go in
+  # ~/.claude/skills.
+  claudeSkillsTree = joinTree "claude-skills" (skillRepoDirs ++ [localSkillsDir]);
 
   # Cursor has no plugin loader: flatten repo skills *and* plugin skills into
   # one tree so ~/.cursor/skills ends up with the same skill set.
   cursorSkillsTree =
     joinTree "cursor-skills"
-    (skillRepoDirs ++ pluginDirs "skillsSubpath" ++ pluginRootSkillDirs);
+    (skillRepoDirs ++ [localSkillsDir] ++ pluginDirs "skillsSubpath" ++ pluginRootSkillDirs);
 
   # Plugin slash-commands, for ~/.cursor/commands.
   cursorCommandsTree = joinTree "cursor-commands" (pluginDirs "commandsSubpath");
