@@ -42,4 +42,14 @@
     rev = "5d6bdbddb4695a62f0d00a3620b37a15275a5093";
     hash = "sha256:0yih1ll0kihp675622q3l201j527y8841lsw4n4axc1n9152jm4f";
   };
+
+  # t3code: not held back — pinned so update-deps opens a dedicated
+  # "📌 pins: t3code X → Y" PR per release instead of burying the bump in
+  # the nixpkgs flake PR. Restart t3code-serve after switching; the switch
+  # doesn't, and the old server keeps running.
+  t3code = {
+    # 0.1.0
+    rev = "02c087f3fe673c9e317f206a627cb6b910336dbe";
+    hash = "sha256:1l60ar0j7j7jrrg4r7j4kscrih0qn2n0lslffzflhv86lyq650r2";
+  };
 }

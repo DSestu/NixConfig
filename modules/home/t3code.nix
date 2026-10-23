@@ -43,7 +43,8 @@
 
   # enableClaude is off by default upstream; this machine drives T3 Code with
   # Claude Code, so put it on the server's PATH. git/gh/codex are already on
-  # by the package's own defaults.
+  # by the package's own defaults. t3code is a pins.nix entry, so its own
+  # nixpkgs would supply an older claude-code; hand it the overlay's instead.
   #
   # Upstream bakes the T3 Connect public config into its release builds; the
   # nixpkgs source build leaves it empty, which hides `t3 connect` ("unavailable
@@ -54,7 +55,10 @@
   # get them.
   t3 = pkgs.symlinkJoin {
     name = "t3code-connect";
-    paths = [(pkgs.t3code.override {enableClaude = true;})];
+    paths = [(pkgs.t3code.override {
+        enableClaude = true;
+        inherit (pkgs) claude-code;
+      })];
     nativeBuildInputs = [pkgs.makeBinaryWrapper];
     postBuild = ''
       for program in "$out/bin"/*; do
