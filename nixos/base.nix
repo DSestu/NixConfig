@@ -219,6 +219,26 @@
     enable = true;
     libraries = with pkgs; [
       stdenv.cc.cc.lib # libstdc++, libgcc_s
+      # T3 Code's preview browser (a prebuilt Chromium): what
+      # `t3 browser setup` would apt-install on another distro.
+      glib
+      nspr
+      nss
+      at-spi2-atk
+      at-spi2-core
+      dbus
+      libx11
+      libxcomposite
+      libxdamage
+      libxext
+      libxfixes
+      libxrandr
+      libxcb
+      libgbm
+      expat
+      libxkbcommon
+      udev
+      alsa-lib
     ];
   };
 
