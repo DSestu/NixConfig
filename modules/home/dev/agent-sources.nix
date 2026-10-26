@@ -139,8 +139,8 @@
     i-have-adhd = {
       owner = "ayghri";
       repo = "i-have-adhd";
-      rev = "723af7d9afaf43eb871dbcce6129e2bf80de90d5";
-      hash = "sha256-5EYLKtrg0RQN0CHR51Sc2qSkgYklu6lqzuH87Dp3gv4=";
+      rev = "1ecea1993b7fce257ffbd686c070948b5e07eda6";
+      hash = "sha256-GTqrnZxQvzo/ogAuUrffkOaMK1BYm/4rAZsnfmDt7DU=";
       skillsSubpath = "skills";
     };
     # REA ships an npm package, not a plugin: the skill is pinned here and the
