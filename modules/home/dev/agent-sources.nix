@@ -96,6 +96,19 @@
         };
       };
     };
+    impeccable = {
+      owner = "pbakaus";
+      repo = "impeccable";
+      rev = "3671d50f0ac9a662ce0615e85a256110c9cd720b";
+      hash = "sha256-RxnMce1gTb0erGw+j6+T5i8orcgbOTci3/KnehBYTPY=";
+      plugins = {
+        impeccable = {
+          version = "4.7.1";
+          pluginSubpath = "plugin";
+          skillsSubpath = "skills";
+        };
+      };
+    };
     context-mode = {
       owner = "mksglu";
       repo = "context-mode";
