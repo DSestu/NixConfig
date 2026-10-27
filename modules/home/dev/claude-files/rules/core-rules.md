@@ -30,6 +30,7 @@
 
 - NEVER commit without explicit user consent. Stage changes and show the diff, then wait for the user to say "commit". A prior commit instruction does not authorise subsequent commits.
 - "commit" means the full flow: create a branch, commit, push, open a PR (title only, `--body ""`), wait for the GitHub Actions checks, then squash-merge. Push and open the PR in the foreground, then run the CI wait and merge as one background Bash command (`gh pr checks <n> --watch --fail-fast && gh pr merge <n> --squash`), not a subagent: an agent took up to 10 minutes per PR. If the repo has no checks, merge right away. If checks fail, don't merge; report the failure.
+- Squash-merge only in personal repos, owned by the `DSestu` GitHub account. In professional repos (any other owner, e.g. `sencrop`), stop once the PR is open and report its link: never merge them.
 - NEVER use `git reset --soft origin/master` to squash a branch that is behind master. It silently reverts other people's merged work. Always `git rebase origin/master` FIRST.
 - Preferred squash: `git fetch origin master && git rebase -i origin/master` (pick first, squash rest)
 - Before any squash, verify with `git log origin/master..HEAD` that only your commits appear
