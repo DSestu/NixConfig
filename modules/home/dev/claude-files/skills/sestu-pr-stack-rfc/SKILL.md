@@ -68,7 +68,7 @@ Write plainly: no em dashes, no staged contrasts, sentence-case headings, every 
 1. For each PNG: call `notion-create-file-upload` with the filename, then
    `python3 <skill-dir>/scripts/notion_upload.py "<upload_url>" '<upload_headers JSON>' <png>`.
    Use its `markdown_source` as `<image source="file-upload://…" />` in the content. Uploads expire if not placed, so publish right after.
-2. Before writing, read `notion://docs/notion-flavored-markdown-spec` if you haven't this session. Escape `<`/`>` inside `<code>` as `&lt;`/`&gt;`.
+2. Before writing, read `notion://docs/notion-flavored-markdown-spec` if you haven't this session. Write `<`/`>` inside `<code>` as-is: code is literal in Notion, and `&lt;`/`&gt;` show up verbatim. Escape them only in plain text.
 3. Rewrite: `notion-update-page` with `replace_content`. New page: `notion-create-pages` under the RFCs data source, with `Name`, `status: DRAFT`, `Impacted Components` if one fits, `Owner` as the user.
 4. Fetch the page again and check headings, images and checklist links rendered. Fix anything that didn't.
 5. If the page has a `GitHub PRs` property, make sure every PR of the stack is in it.
