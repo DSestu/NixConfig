@@ -73,7 +73,7 @@ When the PRs are already written, the document describes a chosen design, so "3.
 - Columns: `<columns><column ratio="50">…</column><column ratio="50">…</column></columns>`
 - Divider between H1 sections: `---`
 - Date: `<date start="2026-01-15" />`
-- Escape angle brackets inside code spans: `<code>push_crm_&lt;region&gt;</code>`. A bare `<region>` is read as a tag and disappears.
+- Angle brackets inside code spans stay literal: `<code>push_crm_<region></code>`. Writing `&lt;region&gt;` there shows the entity text verbatim. In plain text, escape them as `\<region>` or `&lt;region&gt;`.
 
 ## 6. Worked example (fictional)
 
