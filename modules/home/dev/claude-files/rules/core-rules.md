@@ -20,6 +20,11 @@
 - Parallelize independent tool calls; serialize dependent ones
 - Never use placeholder or guessed parameters
 
+## Delegation
+- Delegate implementation to a subagent (runs on a cheaper model) only when it pays off: the change spans several files or many edits, the plan is already settled, and the brief fits in one clear prompt
+- Do it yourself when it is a few edits, when you already hold the needed context, or when the work needs design judgment mid-way
+- After a subagent finishes, review its diff before reporting done
+
 ## Memory Resilience
 - When updating CLAUDE-*.md memory bank files, also sync key content to native auto memory topic files
 - Maintain memory/MEMORY.md as an index of memory bank files and their current state
