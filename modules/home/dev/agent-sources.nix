@@ -109,19 +109,6 @@
         };
       };
     };
-    logo-design-skill = {
-      owner = "kaankiziltug";
-      repo = "logo-design-skill";
-      rev = "734090317a2155c5bf1ae8bd4cc85c6848a0128f";
-      hash = "sha256-EnbDqHGRvpZupky6zDUffe3FmYI6f62WWZPM2GLlbME=";
-      plugins = {
-        logo-design = {
-          version = "1.4.5";
-          pluginSubpath = "";
-          skillsSubpath = "skills";
-        };
-      };
-    };
     context-mode = {
       owner = "mksglu";
       repo = "context-mode";
@@ -167,6 +154,13 @@
       repo = "i-have-adhd";
       rev = "1ecea1993b7fce257ffbd686c070948b5e07eda6";
       hash = "sha256-GTqrnZxQvzo/ogAuUrffkOaMK1BYm/4rAZsnfmDt7DU=";
+      skillsSubpath = "skills";
+    };
+    logo-design-skill = {
+      owner = "kaankiziltug";
+      repo = "logo-design-skill";
+      rev = "734090317a2155c5bf1ae8bd4cc85c6848a0128f";
+      hash = "sha256-EnbDqHGRvpZupky6zDUffe3FmYI6f62WWZPM2GLlbME=";
       skillsSubpath = "skills";
     };
     # REA ships an npm package, not a plugin: the skill is pinned here and the
