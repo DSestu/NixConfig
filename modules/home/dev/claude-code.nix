@@ -92,6 +92,8 @@
       marketplaces;
     effortLevel = "medium";
     model = "opus[1m]";
+    # Opus orchestrates; subagents without a pinned model run on Sonnet.
+    env.CLAUDE_CODE_SUBAGENT_MODEL = "sonnet";
     includeCoAuthoredBy = false;
   };
 
