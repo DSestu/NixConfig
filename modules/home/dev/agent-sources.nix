@@ -109,6 +109,19 @@
         };
       };
     };
+    logo-design-skill = {
+      owner = "kaankiziltug";
+      repo = "logo-design-skill";
+      rev = "734090317a2155c5bf1ae8bd4cc85c6848a0128f";
+      hash = "sha256-EnbDqHGRvpZupky6zDUffe3FmYI6f62WWZPM2GLlbME=";
+      plugins = {
+        logo-design = {
+          version = "1.4.5";
+          pluginSubpath = "";
+          skillsSubpath = "skills";
+        };
+      };
+    };
     context-mode = {
       owner = "mksglu";
       repo = "context-mode";
