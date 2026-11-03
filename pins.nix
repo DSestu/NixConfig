@@ -48,8 +48,8 @@
   # the nixpkgs flake PR. Restart t3code-serve after switching; the switch
   # doesn't, and the old server keeps running.
   t3code = {
-    # 0.1.0
-    rev = "02c087f3fe673c9e317f206a627cb6b910336dbe";
-    hash = "sha256:1l60ar0j7j7jrrg4r7j4kscrih0qn2n0lslffzflhv86lyq650r2";
+    # 0.1.6
+    rev = "0bb2eedc20e4739f29e8045034f2828ad7054f8f";
+    hash = "sha256:008j4dj5yrzww91qvp1lp2c9d1lkwc6i2dpainf5nkdkr3rwj8vy";
   };
 }
