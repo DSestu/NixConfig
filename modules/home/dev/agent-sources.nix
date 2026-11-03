@@ -37,8 +37,8 @@
     addy-agent-skills = {
       owner = "addyosmani";
       repo = "agent-skills";
-      rev = "aeac41d4d005999432bb7312f7ff06383a91d59d";
-      hash = "sha256-HxaYbxuZwVo2wybYazM05YUJG/udQNQP6X0qA5wfYIs=";
+      rev = "301b02b12bff98e4688e6984af6556802322bbde";
+      hash = "sha256-ewVxgb5GqtUeWcGydFz3GbzUkM0p+cuRfP+tlPAg4PY=";
       plugins = {
         agent-skills = {
           version = "1.0.0";
