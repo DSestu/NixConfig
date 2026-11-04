@@ -89,6 +89,22 @@
                   --prefix LD_LIBRARY_PATH : "${prev.stdenv.cc.cc.lib}/lib"
               '';
           });
+
+          # cursor-cli ships a prebuilt Node that SEGV's in ld-linux on
+          # NixOS/WSL (si_addr ≈ 0xefea60). Drive the same index.js with
+          # nixpkgs node instead — `node …/index.js --version` works.
+          cursor-cli = prev.cursor-cli.overrideAttrs (old: {
+            nativeBuildInputs = (old.nativeBuildInputs or []) ++ [prev.makeWrapper];
+            postFixup =
+              (old.postFixup or "")
+              + ''
+                rm -f $out/bin/cursor-agent
+                makeWrapper ${prev.nodejs}/bin/node $out/bin/cursor-agent \
+                  --add-flags "--use-system-ca" \
+                  --add-flags "$out/share/cursor-agent/index.js" \
+                  --set CURSOR_INVOKED_AS cursor-agent
+              '';
+          });
         })
       ];
     };
