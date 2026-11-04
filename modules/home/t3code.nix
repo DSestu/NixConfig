@@ -41,10 +41,11 @@
   # Whitelisted for impermanence in modules/home/persistence.nix.
   baseDir = "${config.home.homeDirectory}/.t3";
 
-  # enableClaude is off by default upstream; this machine drives T3 Code with
-  # Claude Code, so put it on the server's PATH. git/gh/codex are already on
-  # by the package's own defaults. t3code is a pins.nix entry, so its own
-  # nixpkgs would supply an older claude-code; hand it the overlay's instead.
+  # enableClaude / enableCursorCli are off by default upstream; this machine
+  # drives T3 Code with Claude Code and Cursor Agent, so put both on the
+  # server's PATH. git/gh/codex are already on by the package's own defaults.
+  # t3code is a pins.nix entry, so its own nixpkgs would supply an older
+  # claude-code; hand it the overlay's instead.
   #
   # Upstream bakes the T3 Connect public config into its release builds; the
   # nixpkgs source build leaves it empty, which hides `t3 connect` ("unavailable
@@ -57,6 +58,7 @@
     name = "t3code-connect";
     paths = [(pkgs.t3code.override {
         enableClaude = true;
+        enableCursorCli = true;
         inherit (pkgs) claude-code;
       })];
     nativeBuildInputs = [pkgs.makeBinaryWrapper];
