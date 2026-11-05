@@ -99,8 +99,8 @@
     impeccable = {
       owner = "pbakaus";
       repo = "impeccable";
-      rev = "9fadc41729c38fd47d7ae622b501558653f9d2e9";
-      hash = "sha256-CuVmyKOPOAoHyrO+NM71kryBcKayM/E6TTX9z6K/QVo=";
+      rev = "c8891a9ae865d6ee311836ae5199bfce0fe115b1";
+      hash = "sha256-+Gn5Bs5TSYtLKH0YzNV1KJYSdXqRmmw3Bq6VAheYngg=";
       plugins = {
         impeccable = {
           version = "4.8.0";
