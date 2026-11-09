@@ -69,6 +69,9 @@
     # T3 Code web UI in a chromeless Chrome window (no tabs or URL bar). Port
     # must match `port` in modules/home/t3code.nix; `t3` is the server CLI.
     t3code = "google-chrome --app=http://localhost:3773";
+    # Same local server, kept under an explicit name for when `t3code` is
+    # repointed at T3 Connect.
+    t3local = "google-chrome --app=http://localhost:3773";
   };
 
   # Mamba hook — the MAMBA_EXE store path changes each rebuild, so resolve
