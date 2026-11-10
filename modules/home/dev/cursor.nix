@@ -73,6 +73,10 @@
       };
   };
 in {
+  # Shell + T3 both need the agent CLI. Overlay in flake.nix replaces the
+  # bundled Node (SEGV on NixOS/WSL) with pkgs.nodejs.
+  home.packages = [pkgs.cursor-cli];
+
   home.file = {
     # `recursive` so these coexist with Cursor's own bundled skills and with
     # anything created via Cursor's create-skill / create-rule flows.
