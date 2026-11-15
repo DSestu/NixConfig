@@ -99,11 +99,11 @@
     impeccable = {
       owner = "pbakaus";
       repo = "impeccable";
-      rev = "9fadc41729c38fd47d7ae622b501558653f9d2e9";
-      hash = "sha256-CuVmyKOPOAoHyrO+NM71kryBcKayM/E6TTX9z6K/QVo=";
+      rev = "2b86d9c07b97d4bed7de23583e1bd1e58dd2baae";
+      hash = "sha256-BSjkvhmwbsFigXCh9TgIPB1rE7Xh53b0xD83V084DIk=";
       plugins = {
         impeccable = {
-          version = "4.8.0";
+          version = "4.9.1";
           pluginSubpath = "plugin";
           skillsSubpath = "skills";
         };
