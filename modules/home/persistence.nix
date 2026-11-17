@@ -49,6 +49,10 @@
         directory = ".config/BraveSoftware";
         mode = "0700";
       }
+      {
+        directory = ".zen";
+        mode = "0700";
+      }
 
       # --- Game launchers ---
       ".local/share/Steam"

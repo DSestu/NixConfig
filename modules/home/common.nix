@@ -8,6 +8,7 @@
   commonPackages = with pkgs; [
     google-chrome
     brave
+    zen-browser
     remmina
     btop
     bitwarden-cli
