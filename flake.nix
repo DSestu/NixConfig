@@ -32,6 +32,12 @@
       url = "github:ryoppippi/nix-claude-code";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # Zen browser (Firefox-based Arc alternative); not in nixpkgs.
+    zen-browser = {
+      url = "github:0xc000022070/zen-browser-flake";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.home-manager.follows = "home-manager";
+    };
   };
 
   outputs = {
@@ -43,6 +49,7 @@
     disko,
     agenix,
     nix-claude-code,
+    zen-browser,
     ...
   }: let
     system = "x86_64-linux";
@@ -68,11 +75,16 @@
           .${name}
       )
       pins;
+    # pkgs.zen-browser → the zen-browser flake's default (beta) build.
+    zenOverlay = final: prev: {
+      zen-browser = zen-browser.packages.${final.stdenv.hostPlatform.system}.default;
+    };
     pkgs = import nixpkgs {
       inherit system;
       config.allowUnfree = true;
       overlays = [
         pinsOverlay
+        zenOverlay
         # pkgs.claude-code → latest official release (see the input comment).
         nix-claude-code.overlays.default
         (final: prev: {
@@ -161,7 +173,7 @@
       # `disko.nixosModules.default` is loaded but inert until a host
       # folder imports one of `nixos/disko/single-disk-{uefi,bios}.nix`.
       commonNixosModules = [
-        {nixpkgs.overlays = [pinsOverlay nix-claude-code.overlays.default];}
+        {nixpkgs.overlays = [pinsOverlay zenOverlay nix-claude-code.overlays.default];}
         ./nixos/modules/profile-options.nix
         ./nixos/base.nix
         ./nixos/modules/secrets.nix
