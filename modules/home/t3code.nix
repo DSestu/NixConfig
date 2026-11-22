@@ -33,7 +33,7 @@
   pkgs,
   ...
 }: let
-  # Also hardcoded in the `t3code` alias in modules/dual/fish.nix.
+  # Also hardcoded in the `t3local` alias in modules/dual/fish.nix.
   port = "3773";
 
   # ~/.t3 is upstream's own default (T3CODE_HOME), and it is where the T3
