@@ -4,6 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
+	"strconv"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/DSestu/NixConfig/pr-dash/internal/gh"
@@ -31,10 +34,18 @@ func main() {
 	}
 	repo, err := gh.CurrentRepo()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "pr-dash: run inside a GitHub repo:", err)
-		os.Exit(1)
+		// stay open (ws runs pr-dash in a pane, which would close) and say why
+		wd, _ := os.Getwd()
+		notRepo := fmt.Errorf("not a GitHub repo: %w", err)
+		run(ui.Options{Repo: wd, Fetch: func() (model.Snapshot, error) { return model.Snapshot{}, notRepo }, MergeBlocked: notRepo.Error()})
+		return
 	}
 	opts := ui.Options{
+		Branch: currentBranch(),
+		Open: func(num int) error {
+			// Start, not Run: the browser must not block the TUI
+			return exec.Command("gh", "pr", "view", strconv.Itoa(num), "--web", "-R", repo.Owner+"/"+repo.Name).Start()
+		},
 		Repo:   repo.Owner + "/" + repo.Name,
 		Fetch:  func() (model.Snapshot, error) { return gh.Fetch(repo) },
 		DryRun: *dryRun,
@@ -46,6 +57,18 @@ func main() {
 			opts.Merge = merger.Merge
 		}
 	}
+	run(opts)
+}
+
+func currentBranch() string {
+	out, err := exec.Command("git", "branch", "--show-current").Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}
+
+func run(opts ui.Options) {
 	if _, err := tea.NewProgram(ui.New(opts)).Run(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

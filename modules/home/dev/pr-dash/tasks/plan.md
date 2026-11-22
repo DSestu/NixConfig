@@ -54,7 +54,7 @@ task ends with a binary that runs and shows more than the last one.
 
 ### Phase 4: Integration and polish
 - [x] Task 9: `ws` pane runs pr-dash
-- [ ] Task 10: Collapse at 110 cols, cursor glide, merge-progress motion (mouse done early, on request)
+- [x] Task 10: Collapse below 110 cols, mouse, spinner + changed-row fade (cursor glide dropped: it only delays keys)
 
 ### Checkpoint D (done)
 - [ ] All 9 success criteria pass

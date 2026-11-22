@@ -66,7 +66,7 @@ func TestViewFitsExactly(t *testing.T) {
 func TestPreviewAndSections(t *testing.T) {
 	// cursor to #275 (rows: 297 290 273 274 275 271), then the Stacks section
 	plain := ansi.Strip(render(t, 150, 42, "j", "j", "j", "j"))
-	for _, want := range []string{"Checks 1/2", "nix flake check", "2m14s", "running", "Summary", "octocat", "blocked", "3/3 · stack 7"} {
+	for _, want := range []string{"Checks 1/2", "nix flake check", "2m14s", "running", "Summary", "octocat", "blocked", " 3/3  on #274 (open)"} {
 		if !strings.Contains(plain, want) {
 			t.Errorf("preview missing %q", want)
 		}

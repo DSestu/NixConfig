@@ -57,7 +57,11 @@ in {
   # `run-shell -b` is load-bearing — an unbackgrounded run-shell blocks the
   # tmux server's command queue for as long as the fzf popup is open, which is
   # the same wedge the dmux resize-hook patch exists to fix.
+  #
+  # The terminal-features line lets OSC 8 hyperlinks through tmux, so link text
+  # in pr-dash's preview is clickable (it hides the raw URLs).
   xdg.configFile."tmux/sesh.conf".text = ''
+    set -as terminal-features ',xterm*:hyperlinks'
     bind-key S run-shell -b "sesh connect \"$(sesh list --icons | fzf-tmux -p 80%,70% --no-sort --ansi --border-label ' sesh ' --prompt '⚡  ' --header 'enter: attach · ctrl-x: kill · esc: cancel' --bind 'ctrl-x:execute-silent(tmux kill-session -t {2..} 2>/dev/null)+reload(sesh list --icons)')\""
   '';
 

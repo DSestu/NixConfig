@@ -199,7 +199,7 @@ stays below.
 All motion is short and never delays input.
 
 **Acceptance criteria:**
-- [ ] Spec success criterion 9 passes, at both 150×42 and 110 columns
+- [x] Spec success criterion 9 passes, at 150×42, 110, 109 and 80 columns (render tests)
 - [x] Mouse click and wheel work in tmux (done with Task 8; unit-tested, live check pending)
 
 **Verification:**
@@ -208,6 +208,8 @@ All motion is short and never delays input.
 **Dependencies:** 6, 8
 **Files:** `internal/ui/view.go`, `internal/ui/model.go`, `internal/ui/motion.go`
 **Scope:** M
+
+**Done differently:** no cursor glide. Rows are whole cells, so a spring only delays the cursor (product principle 5). Motion that shows change instead: a spinner while fetching and merging, and a 1.2 s pink fade on rows that changed at a refresh.
 
 ### Checkpoint D: done when:
 - [ ] all 9 success criteria pass;

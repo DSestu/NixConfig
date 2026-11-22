@@ -8,7 +8,7 @@ terminal (TUI in a tmux pane; not web/ios/android)
 
 ## Stack
 
-Go, Bubble Tea v2 + lipgloss v2 + bubbles v2 + glamour v2 + harmonica.
+Go, Bubble Tea v2 + lipgloss v2 + glamour v2.
 Packaged with `buildGoModule` inside NixConfig (`modules/home/dev/pr-dash/`).
 Working name `pr-dash`, final name undecided.
 

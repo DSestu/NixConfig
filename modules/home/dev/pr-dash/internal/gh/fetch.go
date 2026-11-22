@@ -35,6 +35,7 @@ type login struct{ Login string }
 
 type response struct {
 	Viewer     login
+	RateLimit  struct{ Remaining, Limit int }
 	Repository struct {
 		PullRequests struct {
 			Nodes []struct {
@@ -118,6 +119,7 @@ func name(l *login) string {
 
 func convert(r response) model.Snapshot {
 	snap := model.Snapshot{Viewer: r.Viewer.Login}
+	snap.Rate.Remaining, snap.Rate.Limit = r.RateLimit.Remaining, r.RateLimit.Limit
 	for _, n := range r.Repository.PullRequests.Nodes {
 		pr := model.PR{
 			Number: n.Number, Title: n.Title, Body: n.Body, Author: name(n.Author),

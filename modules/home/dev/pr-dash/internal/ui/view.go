@@ -13,11 +13,17 @@ import (
 
 const (
 	railW   = 20
+	narrowW = 110       // below this the rail collapses into the table title
 	sepLine = "\x00sep" // body line drawn as ├──┤ across the box
 )
 
 // layout returns the three column widths, borders included.
+// Below narrowW the rail is hidden (width 0) and [ ] switch sections.
 func (m *Model) layout() (rail, table, preview int) {
+	if m.w < narrowW {
+		preview = m.w * 45 / 100
+		return 0, m.w - preview, preview
+	}
 	rest := m.w - railW
 	preview = rest * 58 / 130
 	return railW, rest - preview, preview
@@ -38,8 +44,15 @@ func (m Model) View() tea.View {
 	}
 	rw, tw, pw := m.layout()
 	h := m.boxH()
-	rail := box("Sections", m.focus == focusRail, rw, h, m.railLines())
-	table := box("Pull requests", m.focus == focusTable, tw, h, m.tableLines(tw-2, h-2))
+	rail := make([]string, h)
+	tableTitle := "Pull requests"
+	if rw > 0 {
+		rail = box("Sections", m.focus == focusRail, rw, h, m.railLines())
+	} else {
+		c := model.Counts(m.snap.PRs, m.snap.Viewer, m.marked)
+		tableTitle = fmt.Sprintf("‹ %s %d ›", model.SectionNames[m.section], c[m.section])
+	}
+	table := box(tableTitle, m.focus == focusTable, tw, h, m.tableLines(tw-2, h-2))
 	prev := box("Preview", m.focus == focusPreview, pw, h, m.previewLines(pw-2, h-2))
 	var b strings.Builder
 	b.WriteString(fit(m.header(), m.w) + "\n")
@@ -51,9 +64,19 @@ func (m Model) View() tea.View {
 	v.Content = b.String()
 	if m.merge.phase != phaseNone {
 		d := m.dialog()
-		v.Content = overlay(v.Content, d, (m.w-lipgloss.Width(d[0]))/2, max(1, (m.h-len(d))/2))
+		v.Content = overlay(scrim(v.Content), d, (m.w-lipgloss.Width(d[0]))/2, max(1, (m.h-len(d))/2))
 	}
 	return v
+}
+
+// scrim flattens the screen behind a dialog to one dark colour, so the
+// dialog is the only thing that reads.
+func scrim(s string) string {
+	lines := strings.Split(ansi.Strip(s), "\n")
+	for i, l := range lines {
+		lines[i] = sBorder.Render(l)
+	}
+	return strings.Join(lines, "\n")
 }
 
 // fit truncates or pads s (which may hold ANSI styles) to exactly w cells.
@@ -64,10 +87,14 @@ func fit(s string, w int) string {
 
 // box draws a rounded panel with a title tab; the focused panel is violet.
 func box(title string, focused bool, w, h int, body []string) []string {
-	bc, tt := sBorder, sSub.Bold(true)
 	if focused {
-		bc, tt = sViolet, sTabOn
+		return frame(title, sViolet, sTabOn, w, h, body)
 	}
+	return frame(title, sBorder, sSub.Bold(true), w, h, body)
+}
+
+// frame draws a rounded box with border style bc and title tab style tt.
+func frame(title string, bc, tt lipgloss.Style, w, h int, body []string) []string {
 	inner := w - 2
 	t := " " + title + " "
 	out := []string{bc.Render("╭─") + tt.Render(t) + bc.Render(strings.Repeat("─", max(0, inner-1-lipgloss.Width(t)))+"╮")}
@@ -94,14 +121,24 @@ func (m *Model) header() string {
 	}
 	dot := sBorder.Render("  ·  ")
 	b.WriteString(sDim.Render("  " + m.Repo))
+	if m.Branch != "" {
+		b.WriteString(sDim.Render("  ") + sVioletDim.Render(m.Branch))
+	}
 	switch {
 	case m.loading:
-		b.WriteString(dot + sPink.Render("↻ fetching…"))
+		b.WriteString(dot + sPink.Render(m.spin()+" fetching…"))
 	case !m.next.IsZero():
 		b.WriteString(dot + sDim.Render("↻ "+countdown(m.next.Sub(m.now))))
 	}
 	if !m.fetched.IsZero() {
 		b.WriteString(dot + sDim.Render("updated "+m.fetched.Format("15:04:05")))
+	}
+	if r := m.snap.Rate; r.Limit > 0 {
+		rs := sDim
+		if r.Remaining < r.Limit/10 {
+			rs = sAmber
+		}
+		b.WriteString(dot + rs.Render(fmt.Sprintf("rate %d/%d", r.Remaining, r.Limit)))
 	}
 	if m.err != nil {
 		b.WriteString(dot + sCoral.Bold(true).Render("✗ ") + sCoral.Render(oneLine(m.err.Error())))
@@ -167,9 +204,13 @@ func (m *Model) tableLines(w, h int) []string {
 }
 
 func (m *Model) row(p model.PR, sel bool, titleW int, lastInStack bool) string {
+	start, fading := m.changed[p.Number]
 	bg := func(s lipgloss.Style) lipgloss.Style {
-		if sel {
+		switch {
+		case sel:
 			return s.Background(cSel)
+		case fading && m.frame-start < fadeFrames:
+			return s.Background(fadeCols[m.frame-start])
 		}
 		return s
 	}
@@ -217,7 +258,11 @@ func (m *Model) row(p model.PR, sel bool, titleW int, lastInStack bool) string {
 
 	ck, ckS := checkGlyph(p.CheckRollup)
 	diff := bg(sDim).Render(fmt.Sprintf("%9s", fmt.Sprintf("+%d −%d", p.Additions, p.Deletions)))
-	age := bg(sDim).Render(fmt.Sprintf("%3s", ago(m.now, p.CreatedAt)))
+	ageS := sDim
+	if model.IsFailing(p) {
+		ageS = sCoral
+	}
+	age := bg(ageS).Render(fmt.Sprintf("%3s", ago(m.now, p.CreatedAt)))
 	return cur + mk + sp + num + sp + titleCell + sp + bg(ckS.Bold(true)).Render(ck) + sp + diff + sp + age + sp
 }
 
@@ -251,7 +296,7 @@ func (m *Model) mergeBar() string {
 		return bar(sBar.Foreground(cAmber).Render(" "+m.flash), m.w)
 	}
 	if len(m.marked) == 0 {
-		return bar(b.Render(" no PRs marked · m merges the PR under the cursor · space marks · a marks all shown"), m.w)
+		return bar(b.Render(" nothing marked · ")+m.health(), m.w)
 	}
 	plan := model.BuildPlan(m.snap.PRs, m.marked)
 	n := 0
@@ -273,6 +318,30 @@ func (m *Model) mergeBar() string {
 	return bar(out, m.w)
 }
 
+// health counts the open PRs by merge readiness, for the idle merge bar.
+func (m *Model) health() string {
+	var clean, failing, conflicting int
+	for _, p := range m.snap.PRs {
+		switch {
+		case model.IsFailing(p):
+			failing++
+		case model.IsConflicting(p):
+			conflicting++
+		case !p.IsDraft:
+			clean++
+		}
+	}
+	dot := sBar.Foreground(cBorder).Render(" · ")
+	out := sBar.Foreground(cMintDim).Render(fmt.Sprintf("%d ready", clean))
+	if failing > 0 {
+		out += dot + sBar.Foreground(cCoral).Render(fmt.Sprintf("%d failing", failing))
+	}
+	if conflicting > 0 {
+		out += dot + sBar.Foreground(cAmber).Render(fmt.Sprintf("%d conflicting", conflicting))
+	}
+	return out
+}
+
 // bar pads already-styled s to w cells with the merge-bar background.
 func bar(s string, w int) string {
 	s = ansi.Truncate(s, w, "…")
@@ -280,7 +349,7 @@ func bar(s string, w int) string {
 }
 
 func (m *Model) footer() string {
-	keys := [][2]string{{"tab", "panel"}, {"j/k", "move"}, {"space", "mark"}, {"a", "mark all"}, {"m", "merge"}, {"M", "merge marked"}, {"r", "refresh"}, {"q", "quit"}}
+	keys := [][2]string{{"tab", "panel"}, {"[ ]", "section"}, {"j/k", "move"}, {"space", "mark"}, {"a", "mark all"}, {"m", "merge"}, {"M", "merge marked"}, {"enter", "open"}, {"r", "refresh"}, {"q", "quit"}}
 	parts := make([]string, len(keys))
 	for i, k := range keys {
 		parts[i] = sPink.Bold(true).Render(k[0]) + sDim.Render(" "+k[1])
