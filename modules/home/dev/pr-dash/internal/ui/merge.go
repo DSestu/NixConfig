@@ -119,6 +119,22 @@ func (m *Model) title(num int) string {
 	return ""
 }
 
+// checkSummary is a PR's CI state for the confirm dialog; "no checks" is
+// spelled out so a bump without CI never lands looking green.
+func checkSummary(p model.PR) string {
+	if len(p.Checks) == 0 {
+		return sAmberDim.Render("no checks")
+	}
+	pass := 0
+	for _, c := range p.Checks {
+		if c.State == model.CheckPass {
+			pass++
+		}
+	}
+	g, st := checkGlyph(p.CheckRollup)
+	return st.Render(fmt.Sprintf("%s %d/%d checks", g, pass, len(p.Checks)))
+}
+
 func numList(nums []int) string {
 	s := make([]string, len(nums))
 	for i, n := range nums {
@@ -166,10 +182,11 @@ func (m *Model) dialog() []string {
 				g, failed, note, noteS = sCoral.Bold(true).Render(" ✗ "), failed+1, r.Message, sCoral
 			}
 		case ms.phase == phaseRunning && i == len(ms.results):
-			g = sAmber.Bold(true).Render(" ● ")
+			g = sAmber.Bold(true).Render(" " + m.spin() + " ")
 			note = "merging…"
 		}
 		add(" " + g + " " + sPinkDim.Bold(true).Render(fmt.Sprintf("#%d", s.Target.Number)) + " " + sText.Render(m.title(s.Target.Number)))
+		add("      " + checkSummary(s.Target) + sDim.Render(" · → "+s.Target.BaseRef))
 		if len(s.Lands) > 1 {
 			add("      " + sAmberDim.Render("stack: lands "+numList(s.Lands)+" together"))
 		}
@@ -195,7 +212,7 @@ func (m *Model) dialog() []string {
 		} else if m.DryRun {
 			add(key("y", "finish dry run")+sep+key("n", "cancel"), sDim.Render("dry run: nothing will be merged"))
 		} else {
-			add(key("y", "squash-merge") + sep + key("n", "cancel"))
+			add(chip(cPink).Render(fmt.Sprintf(" y  squash-merge %d PR%s ", n, map[bool]string{true: "", false: "s"}[n == 1])) + sep + key("n", "cancel"))
 		}
 	case phaseRunning:
 		add(sAmber.Render(fmt.Sprintf("merging %d/%d…", len(ms.results)+1, len(ms.plan.Steps))) + sDim.Render("  ctrl+c quits; a request already sent still runs on GitHub"))
@@ -218,7 +235,7 @@ func (m *Model) dialog() []string {
 	for i := range l {
 		l[i] = " " + l[i]
 	}
-	return box(title, true, w, len(l)+2, l)
+	return frame(title, sPink, chip(cPink), w, len(l)+2, l)
 }
 
 // overlay draws fg over bg with its top-left corner at x, y.

@@ -46,6 +46,7 @@ type PR struct {
 // Snapshot is one refresh's worth of data.
 type Snapshot struct {
 	Viewer string
+	Rate   struct{ Remaining, Limit int } // GraphQL points left this hour
 	PRs    []PR
 }
 

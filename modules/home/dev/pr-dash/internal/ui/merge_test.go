@@ -47,7 +47,7 @@ func TestMergeFlow(t *testing.T) {
 	m = k(m, "M")
 	out := m.View().Content
 	plain := ansi.Strip(out)
-	for _, want := range []string{"Squash-merge 3 PRs into DSestu/NixConfig", "#274", "stack: lands #273 #274 together", "#297", "Skipped:", "#290 conflicts", "y squash-merge"} {
+	for _, want := range []string{"Squash-merge 3 PRs into DSestu/NixConfig", "#274", "stack: lands #273 #274 together", "#297", "Skipped:", "#290 conflicts", "y  squash-merge 3 PRs", "no checks · → main"} {
 		if !strings.Contains(plain, want) {
 			t.Errorf("dialog missing %q", want)
 		}

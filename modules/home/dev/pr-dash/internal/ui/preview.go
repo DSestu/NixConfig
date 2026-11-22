@@ -4,30 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"charm.land/glamour/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/DSestu/NixConfig/pr-dash/internal/model"
 )
-
-// bodyCache holds rendered markdown, keyed by width and source text;
-// glamour is too slow to run on every frame.
-var bodyCache = map[string]string{}
-
-func renderBody(md string, w int) string {
-	key := fmt.Sprintf("%d\x00%s", w, md)
-	if s, ok := bodyCache[key]; ok {
-		return s
-	}
-	out := md
-	r, err := glamour.NewTermRenderer(glamour.WithStyles(glamourStyle()), glamour.WithWordWrap(w))
-	if err == nil {
-		if s, err := r.Render(md); err == nil {
-			out = strings.Trim(s, "\n")
-		}
-	}
-	bodyCache[key] = out
-	return out
-}
 
 func rule(title string, w int) string {
 	t := sVioletDim.Bold(true).Render(title)
@@ -69,7 +48,7 @@ func (m *Model) previewAll(w int) []string {
 	label := func(s string) string { return sDim.Render(fmt.Sprintf("%-7s", s)) }
 	add(label("base") + sSub.Render(p.BaseRef+" ← "+p.HeadRef))
 	if p.StackID != 0 {
-		add(label("stack") + sAmber.Render(fmt.Sprintf("%d/%d", p.StackPos, p.StackSize)) + sDim.Render(fmt.Sprintf(" · stack %d", p.StackID)))
+		add(label("stack") + sChipWarn.Render(fmt.Sprintf(" %d/%d ", p.StackPos, p.StackSize)) + sDim.Render(" "+m.stackParent(p)))
 	}
 	add(label("diff") + sDim.Render(fmt.Sprintf("+%d −%d", p.Additions, p.Deletions)))
 	add(label("merge") + mergeLine(p))
@@ -106,7 +85,7 @@ func (m *Model) previewAll(w int) []string {
 	if strings.TrimSpace(p.Body) == "" {
 		add(sDim.Render("no description"))
 	} else {
-		add(strings.Split(renderBody(p.Body, cw), "\n")...)
+		add(strings.Split(renderMarkdown(p.Body, cw, m.focus != focusPreview), "\n")...)
 	}
 
 	add("", rule(fmt.Sprintf("Comments %d", len(p.Comments)), cw))
@@ -115,13 +94,24 @@ func (m *Model) previewAll(w int) []string {
 	}
 	for _, c := range p.Comments {
 		add(sViolet.Bold(true).Render(c.Author) + " " + sDim.Render(ago(m.now, c.CreatedAt)))
-		for _, line := range wrap(c.Body, cw) {
-			add(sText.Render(line))
-		}
+		add(strings.Split(renderMarkdown(c.Body, cw, m.focus != focusPreview), "\n")...)
 		add("")
 	}
 
 	return l
+}
+
+// stackParent says what p sits on: the PR one position down, or the base.
+func (m *Model) stackParent(p model.PR) string {
+	if p.StackPos <= 1 {
+		return "bottom of the stack, on " + p.BaseRef
+	}
+	for _, o := range m.snap.PRs {
+		if o.StackID == p.StackID && o.StackPos == p.StackPos-1 {
+			return fmt.Sprintf("on #%d (open)", o.Number)
+		}
+	}
+	return "on " + p.BaseRef + " (the PRs below have merged)"
 }
 
 func mergeLine(p model.PR) string {

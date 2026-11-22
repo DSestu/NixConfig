@@ -27,7 +27,45 @@ type (
 		err  error
 	}
 	tickMsg time.Time
+	animMsg time.Time
 )
+
+const (
+	frameEvery = 80 * time.Millisecond
+	fadeFrames = 15 // ~1.2s pink fade on rows that changed at a refresh
+)
+
+var spinner = []rune("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏")
+
+func (m *Model) spin() string { return string(spinner[m.frame%len(spinner)]) }
+
+func (m *Model) ensureAnim() tea.Cmd {
+	busy := m.loading || m.merge.phase == phaseRunning || len(m.changed) > 0
+	if !busy || m.animating {
+		return nil
+	}
+	m.animating = true
+	return tea.Tick(frameEvery, func(t time.Time) tea.Msg { return animMsg(t) })
+}
+
+// markChanged flags PRs that are new or moved on since the last refresh.
+// Mergeable flipping from or to UNKNOWN is GitHub catching up, not a change.
+func (m *Model) markChanged(prs []model.PR) {
+	if len(m.snap.PRs) == 0 {
+		return // first load: everything is new, nothing to point at
+	}
+	old := map[int]model.PR{}
+	for _, p := range m.snap.PRs {
+		old[p.Number] = p
+	}
+	for _, p := range prs {
+		o, seen := old[p.Number]
+		mergeable := o.Mergeable != p.Mergeable && o.Mergeable != "UNKNOWN" && p.Mergeable != "UNKNOWN"
+		if !seen || mergeable || o.HeadSHA != p.HeadSHA || o.CheckRollup != p.CheckRollup || len(o.Comments) != len(p.Comments) {
+			m.changed[p.Number] = m.frame
+		}
+	}
+}
 
 // Options wires the UI to the outside world.
 type Options struct {
@@ -36,6 +74,8 @@ type Options struct {
 	Merge        func(num int, sha string, stacked bool) (model.MergeResult, error) // nil when merging is not allowed
 	MergeBlocked string                                                             // why Merge is nil
 	DryRun       bool                                                               // show the plan, call nothing that writes
+	Branch       string                                                             // current git branch, for the header
+	Open         func(num int) error                                                // opens a PR in the browser
 }
 
 type Model struct {
@@ -61,11 +101,15 @@ type Model struct {
 	w, h int
 
 	flash string // one-line notice in the merge bar, cleared on the next key
-	merge mergeState
+
+	frame     int         // animation frame counter
+	animating bool        // a frame tick is in flight
+	changed   map[int]int // PR number -> frame it changed at, while its row fades
+	merge     mergeState
 }
 
 func New(o Options) Model {
-	return Model{Options: o, focus: focusTable, marked: map[int]bool{}, now: time.Now(), loading: true}
+	return Model{Options: o, focus: focusTable, marked: map[int]bool{}, changed: map[int]int{}, now: time.Now(), loading: true}
 }
 
 func (m Model) Init() tea.Cmd { return tea.Batch(m.refresh(), tick()) } // loading is already set in New
@@ -81,10 +125,32 @@ func (m *Model) refresh() tea.Cmd {
 	}
 }
 
+// Update wraps update so any state that needs animation (fetching, merging,
+// a fading row) gets the frame ticker running.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	tm, cmd := m.update(msg)
+	next := tm.(Model)
+	if a := next.ensureAnim(); a != nil {
+		cmd = tea.Batch(cmd, a)
+	}
+	return next, cmd
+}
+
+func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case animMsg:
+		m.frame++
+		m.animating = false // ensureAnim re-arms while still needed
+		for n, start := range m.changed {
+			if m.frame-start >= fadeFrames {
+				delete(m.changed, n)
+			}
+		}
 	case tea.WindowSizeMsg:
 		m.w, m.h = msg.Width, msg.Height
+		if rw, _, _ := m.layout(); rw == 0 && m.focus == focusRail {
+			m.focus = focusTable
+		}
 		m.clamp()
 	case tickMsg:
 		m.now = time.Time(msg)
@@ -99,6 +165,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.err = msg.err
 		m.next = m.now.Add(refreshEvery)
 		if msg.err == nil {
+			m.markChanged(msg.snap.PRs)
 			m.snap, m.fetched = msg.snap, m.now
 			if !m.rechecked && anyUnknown(msg.snap.PRs) {
 				m.next, m.rechecked = m.now.Add(recheckAfter), true
@@ -141,9 +208,13 @@ func (m Model) key(k string) (tea.Model, tea.Cmd) {
 	case "q", "ctrl+c":
 		return m, tea.Quit
 	case "tab":
-		m.focus = (m.focus + 1) % focusCount
+		m.cycleFocus(1)
 	case "shift+tab":
-		m.focus = (m.focus + focusCount - 1) % focusCount
+		m.cycleFocus(focusCount - 1)
+	case "[", "]":
+		d := map[string]int{"[": -1, "]": 1}[k]
+		m.section = model.Section((int(m.section) + d + len(model.SectionNames)) % len(model.SectionNames))
+		m.recompute()
 	case "r":
 		if !m.loading {
 			cmd := m.refresh()
@@ -164,6 +235,12 @@ func (m Model) key(k string) (tea.Model, tea.Cmd) {
 		}
 	case "a":
 		m.markAll()
+	case "enter":
+		if p, ok := m.selected(); ok && m.Open != nil {
+			if err := m.Open(p.Number); err != nil {
+				m.flash = "open failed: " + err.Error()
+			}
+		}
 	case "m":
 		m.openConfirm(false)
 	case "M":
@@ -252,6 +329,14 @@ func (m *Model) wheel(x int, b tea.MouseButton) {
 	}
 	m.move(d)
 	m.focus = focus
+}
+
+// cycleFocus steps focus by d, skipping the rail while it is collapsed.
+func (m *Model) cycleFocus(d int) {
+	m.focus = (m.focus + d) % focusCount
+	if rw, _, _ := m.layout(); rw == 0 && m.focus == focusRail {
+		m.focus = (m.focus + d) % focusCount
+	}
 }
 
 func (m *Model) move(d int) {

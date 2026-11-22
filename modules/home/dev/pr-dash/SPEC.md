@@ -52,10 +52,11 @@ User stories:
 - Go
 - `charm.land/bubbletea/v2` v2.1.x
 - `charm.land/lipgloss/v2` v2.1.x
-- `charm.land/bubbles/v2` v2.2.x
 - `charm.land/glamour/v2` v2.0.x
-- `github.com/charmbracelet/harmonica`
 - `github.com/cli/go-gh/v2` for the auth token and the GraphQL/REST clients
+- `github.com/yuin/goldmark` (already under glamour) to find bare URLs
+
+bubbles and harmonica were planned but are not used: no widget or spring was needed.
 
 These versions are the ones the throwaway demo compiled against.
 
@@ -148,16 +149,17 @@ small-package layout above.
 7. The rail's Failing and Conflicts sections each filter the table.
 8. The `ws` right pane runs `pr-dash` instead of gh-dash, and `diffnav` still
    sits below it.
-9. It fits a tmux pane of 150×42 without broken borders, and at 110 columns the
+9. It fits a tmux pane of 150×42 without broken borders, and below 110 columns the
    rail collapses.
 
 ## Out of Scope (Deferred)
 
+- `/` text filter and a `?` help screen (in the comp; the rail sections and the footer cover V1).
 - Issues and notifications.
 - Multi-repo view: V1 shows the current repo only.
 - Review actions (approve, comment) from the TUI.
 - Mouse hover effects beyond click-to-select and wheel scrolling.
-- Spring animations beyond the cursor glide and merge progress.
+- Spring animations: the cursor glide was dropped (it only delays keys); motion is the fetch/merge spinner and the changed-row fade.
 
 ## Resolved Questions
 
