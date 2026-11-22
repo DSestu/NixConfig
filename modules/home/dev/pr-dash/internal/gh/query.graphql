@@ -1,0 +1,21 @@
+query($owner: String!, $name: String!) {
+  viewer { login }
+  repository(owner: $owner, name: $name) {
+    pullRequests(states: OPEN, first: 100, orderBy: {field: CREATED_AT, direction: DESC}) {
+      nodes {
+        number title body isDraft createdAt additions deletions
+        headRefName headRefOid baseRefName mergeable mergeStateStatus reviewDecision
+        author { login }
+        reviewRequests(first: 10) { nodes { requestedReviewer { ... on User { login } } } }
+        stack { number size }
+        stackEntry { position }
+        comments(last: 5) { nodes { author { login } body createdAt } }
+        commits(last: 1) { nodes { commit { statusCheckRollup { state contexts(first: 50) { nodes {
+          __typename
+          ... on CheckRun { name status conclusion startedAt completedAt }
+          ... on StatusContext { context state createdAt }
+        } } } } } }
+      }
+    }
+  }
+}
