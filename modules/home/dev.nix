@@ -33,6 +33,7 @@ in {
       tmux # required at runtime by dmux
       sesh # fuzzy tmux session picker (prefix+S; fzf comes from dual/fish.nix)
       (callPackage ./dev/dmux {}) # agent multiplexer over tmux + git worktrees
+      (callPackage ./dev/pr-dash {}) # PR dashboard TUI for `ws` (spec: dev/pr-dash/SPEC.md)
     ];
 
   # sesh binds prefix+S to an fzf picker over tmux sessions, zoxide dirs and

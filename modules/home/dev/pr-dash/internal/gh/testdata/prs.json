@@ -1,0 +1,283 @@
+{
+  "data": {
+    "viewer": {
+      "login": "DSestu"
+    },
+    "repository": {
+      "pullRequests": {
+        "nodes": [
+          {
+            "number": 297,
+            "title": "❄️ flake: nix-claude-code (claude 2.1.326 → 2.1.330)",
+            "body": "## Inputs\n\n- **nix-claude-code**: [`a6ebabe...6eb6dfe`](https://github.com/ryoppippi/nix-claude-code/compare/a6ebabe231e2daeb3b4478a09ad5428545380306...6eb6dfee5454cf5270d6d94bb453cb6e956b3ef7)\n\n## Packages\n\n| Package | Old | New | Changelog |\n|---|---|---|---|\n| claude | 2.1.326 | 2.1.330 | [changelog](https://github.com/anthropics/claude-code/releases) |",
+            "isDraft": false,
+            "createdAt": "2026-11-21T12:21:05Z",
+            "additions": 3,
+            "deletions": 3,
+            "headRefName": "flake/nix-claude-code/1795215651",
+            "baseRefName": "main",
+            "mergeable": "MERGEABLE",
+            "mergeStateStatus": "CLEAN",
+            "reviewDecision": null,
+            "author": {
+              "login": "github-actions"
+            },
+            "reviewRequests": {
+              "nodes": []
+            },
+            "stack": null,
+            "stackEntry": null,
+            "comments": {
+              "nodes": []
+            },
+            "commits": {
+              "nodes": [
+                {
+                  "commit": {
+                    "statusCheckRollup": null
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "number": 296,
+            "title": "🤖 agents: thedotmack v15.19.0+6 → v16.0.2+4",
+            "body": "Moves `thedotmack` ([thedotmack/claude-mem](https://github.com/thedotmack/claude-mem)) to its latest commit.\nClaude Code and Cursor both pick this up (shared via `agent-sources.nix`).\n\n| Plugin | Old | New |\n|---|---|---|\n| claude-mem | 15.19.0 | 16.0.2 |\n\n### Commits ([full diff](https://github.com/thedotmack/claude-mem/compare/3d1aa47ec6406c88a76bf9289c4a4248282303e6...f1bb834527637231e23575e2a70c57375efdac04))\n\n- [`f1bb834`](https://github.com/thedotmack/claude-mem/commit/f1bb834527637231e23575e2a70c57375efdac04) fix(agent-runner): run the My Work OpenCode step on OpenCode 2.x (#6361)\n- [`2eeda50`](https://github.com/thedotmack/claude-mem/commit/2eeda5052ff030711aa8ada22c65e5bdae8943fc) chore: promote 16.0.2 for auto-update\n- [`9665871`](https://github.com/thedotmack/claude-mem/commit/96658712bd46d0062eb19bbfb18723a364a9b0ef) docs: update CHANGELOG for v16.0.2\n- [`1ba7227`](https://github.com/thedotmack/claude-mem/commit/1ba7227cab1147e423e4a1e70d2b4fcd96a754ee) test(transcripts): count the append poll's poke instead of racing its stat (#6360)\n- [`66688aa`](https://github.com/thedotmack/claude-mem/commit/66688aa5e3c1d4386cb6f02c518cd3fba06f05b4) chore: bump version to 16.0.2\n- [`ea1cfde`](https://github.com/thedotmack/claude-mem/commit/ea1cfde657d6796bfa6c5d7de9d1e4570c3290eb) fix(prune): keep a cache version while its recorded Claude process is alive (#6352)\n- [`e469a8c`](https://github.com/thedotmack/claude-mem/commit/e469a8cd5405c29eb39e2de8dcb3f63c096f1263) fix(npx-cli): give the async host-observer probe the same 1s budget as the sync probe (#6359)\n- [`0ce495b`](https://github.com/thedotmack/claude-mem/commit/0ce495b0371caf2f0f1ca3fb0531efa0417d8723) fix(my-work): prefer MXC for isolated Codex refresh on Windows (#6348)\n- [`a34ce98`](https://github.com/thedotmack/claude-mem/commit/a34ce9890be418eb6b0b4eb1235d13e968e3408a) fix(session-start-card): draw the card on Team and Enterprise accounts (#6353)\n- [`f52388e`](https://github.com/thedotmack/claude-mem/commit/f52388ef75c2ba4ee684b507c3fd7ad502cfab56) fix: detect OpenCode 2.x connections for My Work refresh (#6340)\n- [`557ddb5`](https://github.com/thedotmack/claude-mem/commit/557ddb522cac4218eb34baf28ede9b983702cb11) feat: add WorldRouter preset for the openai-compatible provider (#6357)\n- [`ec6f25a`](https://github.com/thedotmack/claude-mem/commit/ec6f25a4ce8d447e54f3757af72f99cc34e20e66) IssueHunter candidate ae905e4c43ff: fix for issue #6355 (#6356)\n- [`c0f37d6`](https://github.com/thedotmack/claude-mem/commit/c0f37d60b2e4860851575e3cbb003f23fc340d4e) fix(chroma): reconcile ambiguous collection deletes before rebuilding (#6338)\n- [`ec163d6`](https://github.com/thedotmack/claude-mem/commit/ec163d61d0a1e622482a85b8fc57ae5916667b98) fix(chroma): restart chroma-mcp after a cancelled read once writes settle (#6337)\n- [`aa5fac5`](https://github.com/thedotmack/claude-mem/commit/aa5fac5ad2a76b4f20500845d7768170a44e892e) fix(worker): install the terminal 404 and error handlers after routes (#6341)\n- [`b0ebbb6`](https://github.com/thedotmack/claude-mem/commit/b0ebbb66a8317ff4a94d126a5cf0d531c7c709d0) ci(windows): run the postinstall allowlist guard after the build (#6343)\n- [`53d9224`](https://github.com/thedotmack/claude-mem/commit/53d9224208b877bf99ff444526e2e104798f270d) refactor(cli): read /api/admin/doctor once for the doctor report (#6344)\n- [`3025540`](https://github.com/thedotmack/claude-mem/commit/3025540a0919ba3f8afce4df81fe10b4ae12f1e6) test(worker): pin the Host guard ahead of CORS with a rebinding test (#6345)\n- [`4954333`](https://github.com/thedotmack/claude-mem/commit/495433322319fa628846cef60c1450e740d1b8a3) docs(devin): connect CMEM Pro on Devin cloud with one org secret (#6335)\n- [`4f60edd`](https://github.com/thedotmack/claude-mem/commit/4f60edd75a12cc4ae447aa0946497ea193d93da4) docs(docker): note the repo-root build context in the pinning example (#6346)\n- [`592a487`](https://github.com/thedotmack/claude-mem/commit/592a48716d6b5aa1341d58dba26e0522d50fc3cd) fix(claude-md): resolve absolute paths before the project-root check (#6336)\n- [`4b48c57`](https://github.com/thedotmack/claude-mem/commit/4b48c5727ab62ee22e72a71b822a2fb225491fa2) Show the Claude-Mem mark in the terminal startup card’s right column (#6333)\n- [`2f4ed38`](https://github.com/thedotmack/claude-mem/commit/2f4ed384376420be4f75a5fc2c27ce1bbfb77f81) feat(observer): support Codex as a quota fallback (#6326)\n- [`46e5bf5`](https://github.com/thedotmack/claude-mem/commit/46e5bf526dc7951dd3f851af76c6b0a220d3f8a8) chore: promote 16.0.1 for auto-update\n- [`7214c5b`](https://github.com/thedotmack/claude-mem/commit/7214c5b5a44e7040fdd4def46adee543493ad6c3) docs: update CHANGELOG for v16.0.1\n- [`e22c583`](https://github.com/thedotmack/claude-mem/commit/e22c58353b950b15e6e16d98719801224840f046) chore: bump version to 16.0.1\n- [`08bad9f`](https://github.com/thedotmack/claude-mem/commit/08bad9f906a1308a7bf76ac85e51c6bef3daae97) fix(chroma): end read calls before the worker's search budget (#6327)\n- [`833a0a8`](https://github.com/thedotmack/claude-mem/commit/833a0a834c8c91e6b4843cdba5c8bbe9035fb6d9) fix(codex): never hard-link the user's auth.json into the private Codex home (#6332)\n- [`b5c57a1`](https://github.com/thedotmack/claude-mem/commit/b5c57a1a8d43195aa04be93d4776c88bd8d6695c) feat(devin): claude-mem in Devin cloud sessions and Devin Bots via an org plugin (#6334)\n- [`6bef246`](https://github.com/thedotmack/claude-mem/commit/6bef24671b63e211af971e0b614c109f24b4ffdc) feat(work-view): run the My Work refresh on OpenCode (#5535) (#6330)\n- [`0b4e183`](https://github.com/thedotmack/claude-mem/commit/0b4e183408770db68628a453d7dac39d5d489375) feat(search): match unsegmented scripts by substring on PostgreSQL (#3982) (#6329)\n- [`f239f04`](https://github.com/thedotmack/claude-mem/commit/f239f047985d374aa1543aa6d27110fbe90aa13b) fix(process): classify a partial taskkill failure by liveness, not wording (#6328)\n- [`74d851b`](https://github.com/thedotmack/claude-mem/commit/74d851ba4e1bf4dfdb0943a7bfae7cd24ee39bb5) fix: release the quota cooldown when a probe is answered with <skip_summary/> (#6322) (#6324)\n- [`c62467c`](https://github.com/thedotmack/claude-mem/commit/c62467ca301c85e809f2f40809b862c23cf47c1a) docs(community-sweep): install each worktree with bun install (#6325)\n- [`f8f3681`](https://github.com/thedotmack/claude-mem/commit/f8f3681c5fdb73849cda08ec651c83c380edb319) fix(cli): legacy-alias detection in install/update/doctor, status root warning (#6228 follow-up) (#6300)\n- [`4d05147`](https://github.com/thedotmack/claude-mem/commit/4d051474cfe0a19545c64526d0b64a963d82c8d5) fix(oauth): say when the observer has no Claude Code login it can use (#6319) (#6321)\n- [`e7440f5`](https://github.com/thedotmack/claude-mem/commit/e7440f5edbc917013ff6a012141857c5c244cf91) perf(chroma): pace bulk backfill and start chroma-mcp at low priority (#6299)\n- [`7110d53`](https://github.com/thedotmack/claude-mem/commit/7110d531d9d6db29d98cd61ee1b6d3566df91be9) fix(process): treat a localized taskkill exit 255 as already gone when the named PIDs have exited (#6307)\n- [`097f2f5`](https://github.com/thedotmack/claude-mem/commit/097f2f57e2c41edccbe68c1bd9e350cffa35309b) fix(sqlite): cache the statements that store an observer turn (#6306)\n- [`48f436b`](https://github.com/thedotmack/claude-mem/commit/48f436b6acbe0f51c930d2451246afe6fea71f1c) fix(my-work): tolerate an unreadable refresh status (#6305)\n- [`3afe7bc`](https://github.com/thedotmack/claude-mem/commit/3afe7bc4316ded9bf9b65f1ff09686bcdc6b54e4) fix(server): publish probe state, not deployment internals, on /api/health (#6309)\n- [`718c8b2`](https://github.com/thedotmack/claude-mem/commit/718c8b2999aaf1a0c4a0ce720901223b4e3c8d5e) feat(my-work): card titles name the task in 5-7 words, not the ask copied (#6317)\n- [`5145c12`](https://github.com/thedotmack/claude-mem/commit/5145c12d934affb3c9b6bb75227c7866c8178aac) feat(my-work): image viewer darkens and blurs the page and casts a shadow (#6313)\n- [`ca7db2a`](https://github.com/thedotmack/claude-mem/commit/ca7db2a796b8f22344a9aa25453ec8cffec256d8) fix(setup): keep local work paused when no file descriptors are free (#6303)\n- [`ecf6841`](https://github.com/thedotmack/claude-mem/commit/ecf684199d8aac7b653bc4bb05af781da534a1cc) fix(timeline): normalize project file labels across platforms (#6301)\n- [`046243f`](https://github.com/thedotmack/claude-mem/commit/046243f90cecaa33717ac7868ebae7df2f22679b) Keep the installer’s work email and follow-up message in the terminal (#6308)\n- [`2501099`](https://github.com/thedotmack/claude-mem/commit/2501099c48f241e28498ca8782c963b485ea0cc4) test(grok-bot): build expected paths with path.join so the path-guard tests pass on Windows (#6311)\n- [`d520336`](https://github.com/thedotmack/claude-mem/commit/d5203368eca7d6054aa5c36dd437f98e4c385c31) test(zed): resolve the Zed settings path per platform so the suite passes on Windows (#6312)\n- [`c1dc252`](https://github.com/thedotmack/claude-mem/commit/c1dc252bda98b1310ba3fa4b195efe49070d554b) fix(my-work): a press anywhere on a focus card opens its area (#6315)\n- [`cc4dbf5`](https://github.com/thedotmack/claude-mem/commit/cc4dbf5beb4bd98623e0b842e6617115f4e74631) chore: promote 16.0.0 for auto-update",
+            "isDraft": false,
+            "createdAt": "2026-11-21T12:20:51Z",
+            "additions": 3,
+            "deletions": 3,
+            "headRefName": "agents/thedotmack/v16.0.2+4",
+            "baseRefName": "main",
+            "mergeable": "MERGEABLE",
+            "mergeStateStatus": "CLEAN",
+            "reviewDecision": null,
+            "author": {
+              "login": "github-actions"
+            },
+            "reviewRequests": {
+              "nodes": []
+            },
+            "stack": null,
+            "stackEntry": null,
+            "comments": {
+              "nodes": []
+            },
+            "commits": {
+              "nodes": [
+                {
+                  "commit": {
+                    "statusCheckRollup": null
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "number": 295,
+            "title": "🤖 agents: claude-plugins-official 2026-11-16 → 2026-11-20",
+            "body": "Moves `claude-plugins-official` ([anthropics/claude-plugins-official](https://github.com/anthropics/claude-plugins-official)) to its latest commit.\nClaude Code and Cursor both pick this up (shared via `agent-sources.nix`).\n\n### Commits ([full diff](https://github.com/anthropics/claude-plugins-official/compare/fd30cee3ecd5a8ee772733c5d20c0f2bae2da2f0...73c8cf3ea7e296057b467990f2f5d61b4c922260))\n\n- [`73c8cf3`](https://github.com/anthropics/claude-plugins-official/commit/73c8cf3ea7e296057b467990f2f5d61b4c922260) feat(theme-examples): add sound to Koi Pond and Falling Sand (#7191)\n- [`d586c3f`](https://github.com/anthropics/claude-plugins-official/commit/d586c3f10a8c2366179bf46b097b4f652622ffc6) Merge pull request #7143 from anthropics/mhegazy/sg-bump-2021\n- [`6dc81aa`](https://github.com/anthropics/claude-plugins-official/commit/6dc81aaaa133b1d776fb2fed02de18ac157558f8) Merge pull request #7176 from anthropics/mhegazy/sg-pyenv-win-probe\n- [`ed60e06`](https://github.com/anthropics/claude-plugins-official/commit/ed60e06e2489b50db8d4d4c9144f7fbd577f153d) Merge pull request #7177 from anthropics/mhegazy/sg-other-repo-settings\n- [`4f23030`](https://github.com/anthropics/claude-plugins-official/commit/4f2303046518925cde9907d25e23bf85645849eb) feat(theme-examples): add nine interactive shader scenes (#7189)\n- [`1b9a8c7`](https://github.com/anthropics/claude-plugins-official/commit/1b9a8c736db2330ce1812bcc41878a6e2e288e24) Merge pull request #7188 from anthropics/bump/aikido\n- [`50ca1bc`](https://github.com/anthropics/claude-plugins-official/commit/50ca1bcdcf72b2f0cd7d95e320ec9f81b77f0809) bump(aikido): 75e45f33 → e72df774\n- [`d7d3279`](https://github.com/anthropics/claude-plugins-official/commit/d7d32797e7e02708d0bb00ffe8b8f2397dc1aea6) code-modernization: look up whether target versions are supported (#7170)\n- [`098f248`](https://github.com/anthropics/claude-plugins-official/commit/098f248576bd9ef0b8da1a5c70c390ea9efa9023) fix(theme-examples): shorten the /custom-theme description (#7152)\n- [`30c0ac7`](https://github.com/anthropics/claude-plugins-official/commit/30c0ac7ff8f2f6e741ed8204d5997f14bf80b481) bump(datadog): 195f570c → a1603119 (#6981)\n- [`ff2b813`](https://github.com/anthropics/claude-plugins-official/commit/ff2b81351ae2778c9cda5f5b600269410fd0331c) security-guidance: skip other repositories whose settings change what git runs\n- [`4fa3475`](https://github.com/anthropics/claude-plugins-official/commit/4fa3475d3a7f58ffe75930c6aa8ae56e80496447) security-guidance: keep the interpreter check working through a .bat shim\n- [`df9699a`](https://github.com/anthropics/claude-plugins-official/commit/df9699a55c56707e9948a32951ea356638ea8519) bump(coderabbit): 3e8763d2 → 45bd1ae2 (#7155)\n- [`4d9854e`](https://github.com/anthropics/claude-plugins-official/commit/4d9854e0873b9d068fb444c8b14d00278ce2402a) bump(postman): 1fdd3f1e → d1f1cb9d (#7166)\n- [`6d49181`](https://github.com/anthropics/claude-plugins-official/commit/6d491811023d7af2c96a7fab274935922b29ed01) bump(figma): f2789420 → 43a06ff1 (#7164)\n- [`8b9c980`](https://github.com/anthropics/claude-plugins-official/commit/8b9c980971baca86739d778cc5f8437fd78ec727) Merge pull request #7154 from anthropics/eoger/discord-list-emojis\n- [`e6143c9`](https://github.com/anthropics/claude-plugins-official/commit/e6143c9807a001832badb63e89d58ffe25d542ec) Merge pull request #7140 from anthropics/mhegazy/sg-commit-diff-memory\n- [`668a0c6`](https://github.com/anthropics/claude-plugins-official/commit/668a0c6542d1da594f2d49ddab382198abbddbb2) Merge branch 'main' into eoger/discord-list-emojis\n- [`c64782a`](https://github.com/anthropics/claude-plugins-official/commit/c64782a7157f8cbde0236b4f80ef4d77e619efd8) Merge pull request #7153 from anthropics/eoger/discord-create-thread\n- [`0a5c676`](https://github.com/anthropics/claude-plugins-official/commit/0a5c67674bfba7cf9e67f4b1bbb4464d881ccb91) security-guidance: let a killed holder's lock be released late in a test\n- [`bdbd27d`](https://github.com/anthropics/claude-plugins-official/commit/bdbd27da1d3b535eabfdf7dc5bf2e308858d7d3a) Merge remote-tracking branch 'origin/main' into mhegazy/sg-commit-diff-memory\n- [`1331242`](https://github.com/anthropics/claude-plugins-official/commit/1331242ea877583fc40794a535514bd9591cf20c) Merge pull request #7108 from anthropics/mhegazy/sg-lead-review-keys\n- [`a3a5523`](https://github.com/anthropics/claude-plugins-official/commit/a3a5523d7d9eb445eb308cf1a263ac75bff66d13) Merge pull request #7105 from anthropics/mhegazy/sg-renamed-into-code\n- [`0d578e7`](https://github.com/anthropics/claude-plugins-official/commit/0d578e77027faa943f443e39327db993a0ff8813) Merge pull request #7102 from anthropics/mhegazy/sg-reviewer-no-prose\n- [`87be9f0`](https://github.com/anthropics/claude-plugins-official/commit/87be9f0b583385c00a17b624bb03efa06bca71f6) Merge pull request #7103 from anthropics/mhegazy/sg-chained-push-no-verdict\n- [`d761ce2`](https://github.com/anthropics/claude-plugins-official/commit/d761ce2e989c211d27edffa303e5c2a3aae8f976) feat(discord): add list_emojis tool\n- [`41448d4`](https://github.com/anthropics/claude-plugins-official/commit/41448d4184f113d70ee758a024b5bab1ef2ab0b5) feat(discord): add create_thread tool\n- [`e68c7b3`](https://github.com/anthropics/claude-plugins-official/commit/e68c7b3013205db84d3edefc9bcf7183efefcc5d) security-guidance: bump version to 2.0.21\n- [`a5576bb`](https://github.com/anthropics/claude-plugins-official/commit/a5576bbfa2a13729122803fc8e3adf370f99d37a) security-guidance: read commit and push diffs without holding them\n- [`73ef16c`](https://github.com/anthropics/claude-plugins-official/commit/73ef16c0ce2e74aa5f51ce1cf12cc488738cee74) security-guidance: keep severity counts on full metric rows\n- [`8ee4873`](https://github.com/anthropics/claude-plugins-official/commit/8ee48731324352570a0b8d366b9c9b015bc62808) security-guidance: leave renamed key lists out of the review\n- [`8c43186`](https://github.com/anthropics/claude-plugins-official/commit/8c431861e8bb8f77f23601c8d6b9fdc5c1fadc90) security-guidance: wait for the original review on a message-only amend, and report a failure the push review did not\n- [`c2a542a`](https://github.com/anthropics/claude-plugins-official/commit/c2a542a213456f0b4162029a9cfcf83d0cd99fb1) security-guidance: leave the output rule out when ANTHROPIC_DEFAULT_OPUS_MODEL is set\n- [`cf694f6`](https://github.com/anthropics/claude-plugins-official/commit/cf694f613b8d4568b74ce55aa306aad7cf2327a7) security-guidance: review text files renamed to code names\n- [`4a6d466`](https://github.com/anthropics/claude-plugins-official/commit/4a6d4660e40e0c976a9a79bd0dac7db48bba61e0) security-guidance: review a commit-and-push again when the commit review gave no verdict\n- [`f838db4`](https://github.com/anthropics/claude-plugins-official/commit/f838db4bd88d1c79be222bca73ebb8af46c49fcf) security-guidance: keep a review's result and time on full metric rows\n- [`bf3dec2`](https://github.com/anthropics/claude-plugins-official/commit/bf3dec204d794c54dcc1723c1cc37cdf3b6e4e61) security-guidance: tell the commit reviewer its text is not read",
+            "isDraft": false,
+            "createdAt": "2026-11-21T12:20:49Z",
+            "additions": 2,
+            "deletions": 2,
+            "headRefName": "agents/claude-plugins-official/2026-11-20",
+            "baseRefName": "main",
+            "mergeable": "MERGEABLE",
+            "mergeStateStatus": "CLEAN",
+            "reviewDecision": null,
+            "author": {
+              "login": "github-actions"
+            },
+            "reviewRequests": {
+              "nodes": []
+            },
+            "stack": null,
+            "stackEntry": null,
+            "comments": {
+              "nodes": []
+            },
+            "commits": {
+              "nodes": [
+                {
+                  "commit": {
+                    "statusCheckRollup": null
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "number": 901,
+            "title": "feat: stack base",
+            "body": "Base of a stack.",
+            "isDraft": false,
+            "createdAt": "2026-11-20T10:00:00Z",
+            "additions": 40,
+            "deletions": 2,
+            "headRefName": "s1",
+            "baseRefName": "main",
+            "mergeable": "MERGEABLE",
+            "mergeStateStatus": "CLEAN",
+            "reviewDecision": null,
+            "author": {
+              "login": "DSestu"
+            },
+            "reviewRequests": {
+              "nodes": []
+            },
+            "stack": {
+              "number": 7,
+              "size": 2
+            },
+            "stackEntry": {
+              "position": 1
+            },
+            "comments": {
+              "nodes": [
+                {
+                  "author": {
+                    "login": "octocat"
+                  },
+                  "body": "LGTM",
+                  "createdAt": "2026-11-20T11:00:00Z"
+                }
+              ]
+            },
+            "commits": {
+              "nodes": [
+                {
+                  "commit": {
+                    "statusCheckRollup": {
+                      "state": "SUCCESS",
+                      "contexts": {
+                        "nodes": [
+                          {
+                            "__typename": "CheckRun",
+                            "name": "build",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS",
+                            "startedAt": "2026-11-20T10:01:00Z",
+                            "completedAt": "2026-11-20T10:03:30Z"
+                          },
+                          {
+                            "__typename": "StatusContext",
+                            "context": "ci/legacy",
+                            "state": "SUCCESS",
+                            "createdAt": "2026-11-20T10:02:00Z"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "number": 902,
+            "title": "feat: stack top",
+            "body": "",
+            "isDraft": false,
+            "createdAt": "2026-11-20T12:00:00Z",
+            "additions": 5,
+            "deletions": 1,
+            "headRefName": "s2",
+            "baseRefName": "s1",
+            "mergeable": "CONFLICTING",
+            "mergeStateStatus": "DIRTY",
+            "reviewDecision": "REVIEW_REQUIRED",
+            "author": {
+              "login": "octocat"
+            },
+            "reviewRequests": {
+              "nodes": [
+                {
+                  "requestedReviewer": {
+                    "login": "DSestu"
+                  }
+                }
+              ]
+            },
+            "stack": {
+              "number": 7,
+              "size": 2
+            },
+            "stackEntry": {
+              "position": 2
+            },
+            "comments": {
+              "nodes": []
+            },
+            "commits": {
+              "nodes": [
+                {
+                  "commit": {
+                    "statusCheckRollup": {
+                      "state": "FAILURE",
+                      "contexts": {
+                        "nodes": [
+                          {
+                            "__typename": "CheckRun",
+                            "name": "test",
+                            "status": "COMPLETED",
+                            "conclusion": "FAILURE",
+                            "startedAt": "2026-11-20T12:01:00Z",
+                            "completedAt": "2026-11-20T12:02:00Z"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "lint",
+                            "status": "IN_PROGRESS",
+                            "conclusion": null,
+                            "startedAt": "2026-11-20T12:01:00Z",
+                            "completedAt": null
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "number": 903,
+            "title": "draft: wip",
+            "body": "",
+            "isDraft": true,
+            "createdAt": "2026-11-21T09:00:00Z",
+            "additions": 1,
+            "deletions": 0,
+            "headRefName": "wip",
+            "baseRefName": "main",
+            "mergeable": "UNKNOWN",
+            "mergeStateStatus": "UNKNOWN",
+            "reviewDecision": null,
+            "author": {
+              "login": "DSestu"
+            },
+            "reviewRequests": {
+              "nodes": []
+            },
+            "stack": null,
+            "stackEntry": null,
+            "comments": {
+              "nodes": []
+            },
+            "commits": {
+              "nodes": [
+                {
+                  "commit": {
+                    "statusCheckRollup": null
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}
