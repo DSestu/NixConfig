@@ -66,11 +66,11 @@
     dnw = "diffnav --watch";
     # gh-dash TUI dashboard (config in modules/home/dev.nix, programs.gh-dash).
     ghd = "gh dash";
-    # T3 Code web UI in a chromeless Chrome window (no tabs or URL bar). Port
-    # must match `port` in modules/home/t3code.nix; `t3` is the server CLI.
-    t3code = "google-chrome --app=http://localhost:3773";
-    # Same local server, kept under an explicit name for when `t3code` is
-    # repointed at T3 Connect.
+    # Hosted T3 Code app in a chromeless Chrome window (no tabs or URL bar):
+    # lists every machine linked through T3 Connect, not just this one.
+    t3code = "google-chrome --app=https://app.t3.codes";
+    # This machine's local server only. Port must match `port` in
+    # modules/home/t3code.nix; `t3` is the server CLI.
     t3local = "google-chrome --app=http://localhost:3773";
   };
 
