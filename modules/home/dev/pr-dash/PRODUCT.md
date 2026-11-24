@@ -42,7 +42,7 @@ stack merges atomically through `merge-async`.
 
 - Data comes from one GraphQL query: open PRs with `stack`/`stackEntry`, `statusCheckRollup`, `mergeable` and comments. It auto-refreshes; the interval is undecided (1–5 min).
 - Stacked PRs merge only through `PUT /pulls/{n}/merge-async` plus polling. The synchronous merge endpoint and the `mergePullRequest` mutation don't work on them.
-- Merging is allowed only in `DSestu/*` repos. It never uses `--admin` and never bypasses checks or branch protection.
+- Merging works in any github.com repo. It never uses `--admin` and never bypasses checks or branch protection.
 - Images (kitty/sixel) are unavailable under tmux; the visuals rely on color, motion and mouse.
 - Undecided: how conflicting bumps are handled after a merge, the refresh interval and the final name.
 

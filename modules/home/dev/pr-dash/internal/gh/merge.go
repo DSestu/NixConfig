@@ -12,10 +12,10 @@ import (
 	"github.com/cli/go-gh/v2/pkg/repository"
 )
 
-// MergeAllowed enforces the spec boundary: merges only in DSestu repos on github.com.
+// MergeAllowed refuses hosts other than github.com: Merger talks to api.github.com only.
 func MergeAllowed(repo repository.Repository) error {
-	if repo.Host != "github.com" || repo.Owner != "DSestu" {
-		return fmt.Errorf("merging is disabled outside DSestu repos (this is %s/%s)", repo.Owner, repo.Name)
+	if repo.Host != "github.com" {
+		return fmt.Errorf("merging is disabled outside github.com (this is %s)", repo.Host)
 	}
 	return nil
 }
