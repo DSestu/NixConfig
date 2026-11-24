@@ -128,7 +128,7 @@
 
     # Dev workspace for the current git repo (or $PWD outside one), as one
     # tmux session named after the repo root:
-    #   term / term (1/4) │ pr-dash / diffnav (3/4)
+    #   term / term (~1/8) │ pr-dash (~2/3 high) / diffnav (~1/3)
     # Re-running it reattaches (or switch-clients) instead of rebuilding.
     # tmux turns . and : in session names into _, so we do the same up front —
     # otherwise has-session misses and every call tries to recreate it. `=`
@@ -143,8 +143,8 @@
       if not tmux has-session -t "=$s" 2>/dev/null
         # Pane ids (%N) stay fixed across splits; pane indices renumber.
         set -l term (tmux new-session -d -s $s -c $root -P -F '#{pane_id}')
-        set -l dash (tmux split-window -h -l 75% -t $term -c $root -P -F '#{pane_id}' 'pr-dash')
-        tmux split-window -v -t $dash -c $root 'diffnav --watch'
+        set -l dash (tmux split-window -h -l 87% -t $term -c $root -P -F '#{pane_id}' 'pr-dash')
+        tmux split-window -v -l 35% -t $dash -c $root 'diffnav --watch'
         tmux split-window -v -t $term -c $root
         tmux select-pane -t $term
       end
