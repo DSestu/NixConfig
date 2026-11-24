@@ -83,7 +83,10 @@ func TestMergeAllowed(t *testing.T) {
 	if MergeAllowed(repository.Repository{Host: "github.com", Owner: "DSestu", Name: "x"}) != nil {
 		t.Error("DSestu should be allowed")
 	}
-	if MergeAllowed(repository.Repository{Host: "github.com", Owner: "sencrop", Name: "x"}) == nil {
-		t.Error("sencrop must be refused")
+	if MergeAllowed(repository.Repository{Host: "github.com", Owner: "sencrop", Name: "x"}) != nil {
+		t.Error("other owners should be allowed")
+	}
+	if MergeAllowed(repository.Repository{Host: "ghe.example.com", Owner: "DSestu", Name: "x"}) == nil {
+		t.Error("non-github.com hosts must be refused")
 	}
 }

@@ -77,10 +77,10 @@ func TestMergeFlow(t *testing.T) {
 	}
 }
 
-func TestMergeBlockedOutsideDSestu(t *testing.T) {
-	m := setup(Options{Repo: "sencrop/x", MergeBlocked: "merging is disabled outside DSestu repos (this is sencrop/x)"})
+func TestMergeBlocked(t *testing.T) {
+	m := setup(Options{Repo: "x/y", MergeBlocked: "merging is disabled outside github.com (this is ghe.example.com)"})
 	m = k(m, "space", "M")
-	if m.merge.phase != phaseNone || !strings.Contains(ansi.Strip(m.mergeBar()), "disabled outside DSestu") {
+	if m.merge.phase != phaseNone || !strings.Contains(ansi.Strip(m.mergeBar()), "disabled outside github.com") {
 		t.Errorf("M must refuse: phase %v bar %q", m.merge.phase, ansi.Strip(m.mergeBar()))
 	}
 }

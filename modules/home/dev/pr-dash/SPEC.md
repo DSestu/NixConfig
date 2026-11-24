@@ -128,7 +128,6 @@ small-package layout above.
 - Ask first: new Go dependencies beyond the stack above; changing the `ws`
   layout beyond swapping the pane command; removing `programs.gh-dash`.
 - Never:
-  - merge in a repo not owned by `DSestu`;
   - use admin merge or bypass checks or branch protection;
   - store the token anywhere (`go-gh` reads it from gh).
 
@@ -145,7 +144,7 @@ small-package layout above.
 5. Pressing `M` with marked PRs shows a confirmation listing what merges and
    what is skipped (failing checks, conflicts). `y` merges them in plan order,
    shows progress for each PR, and ends with a summary.
-6. In a repo not owned by DSestu, `M` refuses with a message.
+6. In a repo not on github.com, `M` refuses with a message.
 7. The rail's Failing and Conflicts sections each filter the table.
 8. The `ws` right pane runs `pr-dash` instead of gh-dash, and `diffnav` still
    sits below it.
