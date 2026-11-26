@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# Markdown summary of a flake.lock update, for the update-flake-lock PR body.
+# Markdown summary of a flake.lock update, for the flake-input-update.sh PR body.
 # Eval-only (no builds): lists changed flake inputs with GitHub compare
 # links, then package version changes with each package's meta.changelog.
+# Leaves the package lists in <work-dir>/{old,new}-pkgs.json for the caller.
 #
-# Usage: ./scripts/flake-update-summary.sh <old-checkout> <new-checkout>
+# Usage: ./scripts/flake-update-summary.sh <old-checkout> <new-checkout> <work-dir>
 set -euo pipefail
-old=$1 new=$2
+old=$1 new=$2 work=${3:?usage: flake-update-summary.sh <old-checkout> <new-checkout> <work-dir>}
 
 # Packages the user actually gets: standalone HM + the desktop system.
 targets=(
@@ -16,7 +17,7 @@ targets=(
 apply='map (p: let d = builtins.parseDrvName (p.name or ""); in {
   n = p.pname or d.name; v = p.version or d.version; c = p.meta.changelog or null; })'
 
-failed=$(mktemp)
+failed=$work/failed
 pkgs() {
   for t in "${targets[@]}"; do
     # Errors go to stderr (the CI log); the body just flags the gap.
@@ -35,8 +36,8 @@ jq -rn --slurpfile o "$old/flake.lock" --slurpfile n "$new/flake.lock" '
     else "- **\($k)**: added at `\($l.rev[:7])`" end'
 echo
 
-pkgs "$old" > /tmp/old-pkgs.json
-pkgs "$new" > /tmp/new-pkgs.json
+pkgs "$old" > "$work/old-pkgs.json"
+pkgs "$new" > "$work/new-pkgs.json"
 
 echo "## Packages"
 echo
@@ -45,7 +46,7 @@ if [ -s "$failed" ]; then
   sed 's/^/> /' "$failed"
   echo
 fi
-jq -rn --slurpfile o /tmp/old-pkgs.json --slurpfile n /tmp/new-pkgs.json '
+jq -rn --slurpfile o "$work/old-pkgs.json" --slurpfile n "$work/new-pkgs.json" '
   $o[0] as $o | $n[0] as $n
   | ([$n | keys[] | select($o[.] and $o[.].v != $n[.].v)
       | "| \(.) | \($o[.].v) | \($n[.].v) | \(if $n[.].c then "[changelog](\($n[.].c))" else "" end) |"]) as $changed
