@@ -349,7 +349,7 @@ func bar(s string, w int) string {
 }
 
 func (m *Model) footer() string {
-	keys := [][2]string{{"tab", "panel"}, {"[ ]", "section"}, {"j/k", "move"}, {"space", "mark"}, {"a", "mark all"}, {"m", "merge"}, {"M", "merge marked"}, {"enter", "open"}, {"r", "refresh"}, {"q", "quit"}}
+	keys := [][2]string{{"tab", "panel"}, {"[ ]", "section"}, {"j/k", "move"}, {"space", "mark"}, {"a", "mark all"}, {"m", "merge"}, {"M", "merge marked"}, {"o/enter", "open"}, {"r", "refresh"}, {"q", "quit"}}
 	parts := make([]string, len(keys))
 	for i, k := range keys {
 		parts[i] = sPink.Bold(true).Render(k[0]) + sDim.Render(" "+k[1])

@@ -235,7 +235,7 @@ func (m Model) key(k string) (tea.Model, tea.Cmd) {
 		}
 	case "a":
 		m.markAll()
-	case "enter":
+	case "enter", "o":
 		if p, ok := m.selected(); ok && m.Open != nil {
 			if err := m.Open(p.Number); err != nil {
 				m.flash = "open failed: " + err.Error()
