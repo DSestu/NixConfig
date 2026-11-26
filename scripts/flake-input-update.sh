@@ -8,20 +8,21 @@ set -euo pipefail
 name=$1
 out=${GITHUB_OUTPUT:-/dev/stdout}
 
-# Untouched checkout for the package diff's "before" side.
-old=$(mktemp -d)
+# Untouched checkout for the package diff's "before" side; scratch dir for
+# the package lists and tag clone.
+old=$(mktemp -d) work=$(mktemp -d)
 git worktree add -q --detach "$old" HEAD
-trap 'git worktree remove --force "$old"' EXIT
+trap 'git worktree remove --force "$old"; rm -rf "$work"' EXIT
 
 nix flake update "$name"
 cmp -s flake.lock "$old/flake.lock" && exit 0
 
-body=$(./scripts/flake-update-summary.sh "$old" .)
+body=$(./scripts/flake-update-summary.sh "$old" . "$work")
 
 # Inputs carry no version, so the title names the change by, in order:
-# 1. the one package whose version it bumps (pkg lists left in /tmp by
+# 1. the one package whose version it bumps (pkg lists left in $work by
 #    flake-update-summary.sh)
-change=$(jq -rn --slurpfile o /tmp/old-pkgs.json --slurpfile n /tmp/new-pkgs.json '
+change=$(jq -rn --slurpfile o "$work/old-pkgs.json" --slurpfile n "$work/new-pkgs.json" '
   $o[0] as $o | [$n[0] | to_entries[] | select($o[.key] and $o[.key].v != .value.v)
     | "(\(.key) \($o[.key].v) → \(.value.v))"]
   | if length == 1 then .[0] else empty end')
@@ -33,7 +34,7 @@ old_rev=$(lock "$old/flake.lock" rev) new_rev=$(lock flake.lock rev)
 # 2. the input repo's nearest git tags (commits-only clone). ponytail:
 #    nixpkgs is skipped, too big to clone and its tags don't track unstable.
 if [ -z "$change" ] && [ -n "$owner" ] && [ "${owner,,}/${repo,,}" != nixos/nixpkgs ]; then
-  tags=$(mktemp -d)
+  tags=$work/tags
   git clone -q --bare --filter=tree:0 "https://github.com/$owner/$repo" "$tags"
   describe() { git -C "$tags" describe --tags "$1" 2>/dev/null | sed 's/-\([0-9]*\)-g[0-9a-f]*$/+\1/'; }
   old_tag=$(describe "$old_rev") || true

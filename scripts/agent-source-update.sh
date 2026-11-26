@@ -37,6 +37,7 @@ done < <(jq -r '.plugins // {} | to_entries[] | [.key, .value.pluginSubpath, .va
 # Name each rev by its nearest git tag (v5.1.0, or v5.1.0+3 for 3 commits
 # past it). Commits-only clone: describe needs no trees or blobs.
 tags=$(mktemp -d)
+trap 'rm -rf "$tags"' EXIT
 git clone -q --bare --filter=tree:0 "https://github.com/$owner/$repo" "$tags"
 describe() { git -C "$tags" describe --tags "$1" 2>/dev/null | sed 's/-\([0-9]*\)-g[0-9a-f]*$/+\1/'; }
 # No tag and no plugin.json bump means no version: use commit dates.
