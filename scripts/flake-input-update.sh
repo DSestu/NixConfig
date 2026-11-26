@@ -5,6 +5,7 @@
 #
 # Usage: ./scripts/flake-input-update.sh <input>     (needs gh auth)
 set -euo pipefail
+source "$(dirname "$0")/lib.sh"
 name=$1
 out=${GITHUB_OUTPUT:-/dev/stdout}
 
@@ -34,11 +35,9 @@ old_rev=$(lock "$old/flake.lock" rev) new_rev=$(lock flake.lock rev)
 # 2. the input repo's nearest git tags (commits-only clone). ponytail:
 #    nixpkgs is skipped, too big to clone and its tags don't track unstable.
 if [ -z "$change" ] && [ -n "$owner" ] && [ "${owner,,}/${repo,,}" != nixos/nixpkgs ]; then
-  tags=$work/tags
-  git clone -q --bare --filter=tree:0 "https://github.com/$owner/$repo" "$tags"
-  describe() { git -C "$tags" describe --tags "$1" 2>/dev/null | sed 's/-\([0-9]*\)-g[0-9a-f]*$/+\1/'; }
-  old_tag=$(describe "$old_rev") || true
-  new_tag=$(describe "$new_rev") || true
+  clone_commits "$work/tags" "$owner" "$repo"
+  old_tag=$(describe_rev "$work/tags" "$old_rev") || true
+  new_tag=$(describe_rev "$work/tags" "$new_rev") || true
   [ -n "$old_tag" ] && [ -n "$new_tag" ] && change="$old_tag → $new_tag"
 fi
 

@@ -6,6 +6,7 @@
 #
 # Usage: ./scripts/agent-source-update.sh <name>     (needs gh auth)
 set -euo pipefail
+source "$(dirname "$0")/lib.sh"
 name=$1
 file=modules/home/dev/agent-sources.nix
 out=${GITHUB_OUTPUT:-/dev/stdout}
@@ -34,16 +35,14 @@ while IFS=$'\t' read -r plugin sub old_ver; do
   change=${change:-$old_ver → $new_ver}
 done < <(jq -r '.plugins // {} | to_entries[] | [.key, .value.pluginSubpath, .value.version] | @tsv' <<<"$src")
 
-# Name each rev by its nearest git tag (v5.1.0, or v5.1.0+3 for 3 commits
-# past it). Commits-only clone: describe needs no trees or blobs.
+# Name each rev by its nearest git tag.
 tags=$(mktemp -d)
 trap 'rm -rf "$tags"' EXIT
-git clone -q --bare --filter=tree:0 "https://github.com/$owner/$repo" "$tags"
-describe() { git -C "$tags" describe --tags "$1" 2>/dev/null | sed 's/-\([0-9]*\)-g[0-9a-f]*$/+\1/'; }
+clone_commits "$tags" "$owner" "$repo"
 # No tag and no plugin.json bump means no version: use commit dates.
 commit_date() { git -C "$tags" log -1 --format=%cs "$1"; }
-old_tag=$(describe "$old_rev") || true
-new_tag=$(describe "$new_rev") || true
+old_tag=$(describe_rev "$tags" "$old_rev") || true
+new_tag=$(describe_rev "$tags" "$new_rev") || true
 [ -n "$new_tag" ] && change="${old_tag:-$(commit_date "$old_rev")} → $new_tag"
 change=${change:-$(commit_date "$old_rev") → $(commit_date "$new_rev")}
 
