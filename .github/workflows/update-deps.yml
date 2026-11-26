@@ -17,17 +17,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/determinate-nix-action@v3
       - id: list
-        run: |
-          echo "targets=$(nix eval --impure --json --expr '
-            let
-              agents = import ./modules/home/dev/agent-sources.nix { pkgs = {}; lib = {}; };
-              sources = agents.marketplaces // agents.skillRepos;
-              each = script: map (name: { inherit script name; });
-            in
-              each "pin-update.sh" (builtins.attrNames (import ./pins.nix { lib = {}; }))
-              ++ each "agent-source-update.sh" (builtins.filter (n: sources.${n}.autoUpdate or true) (builtins.attrNames sources))
-              ++ each "flake-input-update.sh" (builtins.attrNames (builtins.fromJSON (builtins.readFile ./flake.lock)).nodes.root.inputs)
-          ')" >> "$GITHUB_OUTPUT"
+        run: echo "targets=$(./scripts/list-update-targets.sh)" >> "$GITHUB_OUTPUT"
   update:
     needs: list
     if: needs.list.outputs.targets != '[]'
