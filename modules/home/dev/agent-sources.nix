@@ -159,8 +159,8 @@
     logo-design-skill = {
       owner = "kaankiziltug";
       repo = "logo-design-skill";
-      rev = "734090317a2155c5bf1ae8bd4cc85c6848a0128f";
-      hash = "sha256-EnbDqHGRvpZupky6zDUffe3FmYI6f62WWZPM2GLlbME=";
+      rev = "e9eaddc07895575253d6663320354a708f53e955";
+      hash = "sha256-ueZ7m6uEO3CcfRu1IYTA9J5EQJYft28IQEpVuEh2fzE=";
       skillsSubpath = "skills";
     };
     # REA ships an npm package, not a plugin: the skill is pinned here and the
