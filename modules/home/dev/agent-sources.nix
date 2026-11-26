@@ -152,8 +152,8 @@
     i-have-adhd = {
       owner = "ayghri";
       repo = "i-have-adhd";
-      rev = "1ecea1993b7fce257ffbd686c070948b5e07eda6";
-      hash = "sha256-GTqrnZxQvzo/ogAuUrffkOaMK1BYm/4rAZsnfmDt7DU=";
+      rev = "f3e783bae5f4820416492091b3abeb670616c23a";
+      hash = "sha256-iUwacxvDZT/9Ck0gUWOlmUxrZlieVZEYOeyEJJOk650=";
       skillsSubpath = "skills";
     };
     logo-design-skill = {
